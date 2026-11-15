@@ -2,6 +2,8 @@
 
 A single World of Warcraft addon that bundles several small UI modules behind one options panel.
 
+Built for WoW Forever 1.60.1 (interface version `16001`).
+
 | Module | What it does |
 | --- | --- |
 | Simplified Warrior Ragebar | One centered text (value or percentage) on the Personal Resource Display's health and rage bars. Warriors only. |

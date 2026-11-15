@@ -1,5 +1,4 @@
-## Interface: 16001, 11509
-## Interface-Classic: 11509
+## Interface: 16001
 ## Title: Dhoxar Modules
 ## Notes: A collection of small UI modules (Simplified Warrior Ragebar, Simple Warrior Reminders, Quest XP Bar) managed from one options panel. Type /dhoxar.
 ## Author: rodrigoarenacamara
