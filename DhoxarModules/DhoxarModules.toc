@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Dhoxar Modules
-## Notes: A collection of small UI modules (Warrior rage bar and reminders, Warlock, Priest and Mage buff reminders, Quest XP Bar, Quest Item Sparkles) managed from one options panel. Type /dhoxar.
+## Notes: A collection of small UI modules (Warrior rage bar and reminders, Warlock, Priest and Mage buff reminders, Quest XP Bar, Quest Item Sparkles, FPS & Latency) managed from one options panel. Type /dhoxar.
 ## Author: rodrigoarenacamara
 ## Version: 1.2.0
 ## IconTexture: Interface\AddOns\DhoxarModules\Media\logo
@@ -23,3 +23,4 @@ Modules\QuestSparkles.lua
 Modules\Warlock.lua
 Modules\Priest.lua
 Modules\Mage.lua
+Modules\Performance.lua
