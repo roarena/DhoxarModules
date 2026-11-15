@@ -1,0 +1,101 @@
+-- Dhoxar Modules - shared helpers for modules.
+--
+-- This client can hand back protected "secret" values, so modules read
+-- game state through these helpers instead of trusting raw API results.
+
+local _, ns = ...
+
+local Util = {}
+ns.Util = Util
+
+function Util.IsSecret(v)
+    return type(issecretvalue) == "function" and issecretvalue(v) or false
+end
+
+-- pcall wrapper: returns the function's results, or nil if it is missing or errors.
+function Util.SafeCall(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, a, b, c, d, e, f, g, h = pcall(fn, ...)
+    if not ok then return nil end
+    return a, b, c, d, e, f, g, h
+end
+
+-- The value if it is a plain, readable number; otherwise nil.
+function Util.SafeNumber(v)
+    if v == nil or Util.IsSecret(v) or type(v) ~= "number" then return nil end
+    return v
+end
+
+function Util.ToSet(list)
+    local set = {}
+    for _, value in ipairs(list) do
+        set[value] = true
+    end
+    return set
+end
+
+---------------------------------------------------------------------------
+-- Copyable text window (for debug dumps)
+---------------------------------------------------------------------------
+
+local copyFrame
+
+function Util.ShowCopyableText(title, text)
+    if not copyFrame then
+        local f = CreateFrame("Frame", "DhoxarModulesCopyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+        f:SetSize(520, 420)
+        f:SetPoint("CENTER")
+        f:SetFrameStrata("DIALOG")
+        f:SetMovable(true)
+        f:EnableMouse(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        if f.SetBackdrop then
+            f:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile = true,
+                tileSize = 32,
+                edgeSize = 32,
+                insets = { left = 11, right = 12, top = 12, bottom = 11 },
+            })
+        else
+            local bg = f:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints(f)
+            bg:SetColorTexture(0, 0, 0, 0.85)
+        end
+
+        f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        f.title:SetPoint("TOP", f, "TOP", 0, -16)
+
+        local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
+        closeBtn:SetScript("OnClick", function()
+            f:Hide()
+        end)
+
+        local scrollFrame = CreateFrame("ScrollFrame", "DhoxarModulesCopyScroll", f, "UIPanelScrollFrameTemplate")
+        scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -40)
+        scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -32, 16)
+
+        local editBox = CreateFrame("EditBox", nil, scrollFrame)
+        editBox:SetMultiLine(true)
+        editBox:SetFontObject(ChatFontNormal)
+        editBox:SetWidth(scrollFrame:GetWidth())
+        editBox:SetAutoFocus(false)
+        editBox:SetScript("OnEscapePressed", function()
+            f:Hide()
+        end)
+        scrollFrame:SetScrollChild(editBox)
+
+        f.editBox = editBox
+        copyFrame = f
+    end
+
+    copyFrame.title:SetText((title or ns.title) .. " -- Ctrl+A then Ctrl+C to copy, Esc to close")
+    copyFrame.editBox:SetText(text or "")
+    copyFrame.editBox:HighlightText()
+    copyFrame.editBox:SetFocus()
+    copyFrame:Show()
+end
