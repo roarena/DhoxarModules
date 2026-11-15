@@ -18,7 +18,7 @@ local M = ns:RegisterModule({
     title = "FPS & Latency",
     description = "Shows your frame rate and latency on the screen. The latency turns orange, then red, as the game lags.",
     aliases = { "fps", "latency", "ms" },
-    defaults = { showFPS = true, showLatency = true, fontSize = 14, position = {} },
+    defaults = { showFPS = true, showLatency = true, fontSize = 14, position = {}, lagStart = 150, lagMax = 400 },
 })
 
 local TAG = "|cffc8aa88FPS & Latency|r: "
@@ -26,16 +26,24 @@ local UPDATE_INTERVAL = 0.5
 local FONT_SIZES = { 10, 12, 14, 16, 18, 22 }
 local DEFAULT_POSITION = { "TOP", "TOP", 0, -8 }
 
--- Latency colors: normal up to LAG_START ms, orange at LAG_START, blending
--- to red at LAG_MAX ms and above.
-local LAG_START, LAG_MAX = 150, 400
+-- Latency colors: normal below lagStart ms, orange at lagStart, blending to
+-- red at lagMax ms and above. Both are set on the module's page.
+local LAG_MIN_SETTING, LAG_MAX_SETTING, LAG_STEP = 50, 1000, 10
 local NORMAL = { 1, 1, 1 }
 local ORANGE = { 1, 0.6, 0.1 }
 local RED = { 1, 0.15, 0.15 }
 
+local function Thresholds()
+    local start = tonumber(M.db.lagStart) or 150
+    local max = tonumber(M.db.lagMax) or 400
+    if max <= start then max = start + LAG_STEP end
+    return start, max
+end
+
 local function LatencyColor(ms)
-    if ms < LAG_START then return NORMAL end
-    local t = math.min(1, (ms - LAG_START) / (LAG_MAX - LAG_START))
+    local start, max = Thresholds()
+    if ms < start then return NORMAL end
+    local t = math.min(1, (ms - start) / (max - start))
     return {
         ORANGE[1] + (RED[1] - ORANGE[1]) * t,
         ORANGE[2] + (RED[2] - ORANGE[2]) * t,
@@ -182,7 +190,7 @@ function M:BuildOptions(page)
     })
     page:Checkbox({
         label = "Show latency",
-        description = ("Milliseconds to the server. White below %d ms, orange from %d ms, shifting to red at %d ms and above."):format(LAG_START, LAG_START, LAG_MAX),
+        description = "Milliseconds to the server, colored by the thresholds below.",
         get = function() return M.db.showLatency end,
         set = function(value) M.db.showLatency = value and true or false; Refresh() end,
     })
@@ -196,6 +204,43 @@ function M:BuildOptions(page)
                 if size == M.db.fontSize then nextSize = FONT_SIZES[i + 1] or FONT_SIZES[1] break end
             end
             M.db.fontSize = nextSize
+            Refresh()
+        end,
+    })
+
+    page:Header("Latency colors")
+    page:Slider({
+        label = "Orange from",
+        description = "Below this the latency is white. At this value it turns orange.",
+        min = LAG_MIN_SETTING, max = LAG_MAX_SETTING - LAG_STEP, step = LAG_STEP,
+        get = function() return (Thresholds()) end,
+        set = function(value)
+            M.db.lagStart = value
+            -- Keep red above orange.
+            if (tonumber(M.db.lagMax) or 0) <= value then M.db.lagMax = value + LAG_STEP end
+            Refresh()
+        end,
+        format = function(value) return value .. " ms" end,
+    })
+    page:Slider({
+        label = "Red at",
+        description = "Between the two values the color shifts from orange to red; from this value on it is fully red.",
+        min = LAG_MIN_SETTING + LAG_STEP, max = LAG_MAX_SETTING, step = LAG_STEP,
+        get = function() return select(2, Thresholds()) end,
+        set = function(value)
+            M.db.lagMax = value
+            -- Keep orange below red.
+            if (tonumber(M.db.lagStart) or 0) >= value then M.db.lagStart = value - LAG_STEP end
+            Refresh()
+        end,
+        format = function(value) return value .. " ms" end,
+    })
+    page:Button({
+        label = "Default colors",
+        description = "Orange from 150 ms, red at 400 ms.",
+        text = "Reset",
+        onClick = function()
+            M.db.lagStart, M.db.lagMax = 150, 400
             Refresh()
         end,
     })

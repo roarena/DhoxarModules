@@ -11,7 +11,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 | Priest | In-combat icon when Power Word: Fortitude is missing or about to fade (Prayer of Fortitude and another priest's Fortitude count too). Priests only. |
 | Mage | In-combat icon when Arcane Intellect is missing or about to fade (Arcane Brilliance and another mage's Arcane Intellect count too). Mages only. |
 | Quest XP Bar | Shades the XP bar green with the XP your completed quests will award. |
-| FPS & Latency | Shows your frame rate and latency on the screen. The latency turns orange from 150 ms and shifts to red at 400 ms. |
+| FPS & Latency | Shows your frame rate and latency on the screen. The latency turns orange, then red, as it rises (by default orange from 150 ms, red at 400 ms). |
 | Quest Item Sparkles | Keeps the loot sparkle on quest items showing: graphics presets turn it off, this turns it back on. Does not change your outline mode. |
 
 ## Install
@@ -38,7 +38,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 | Warrior | Rage bar: on/off, show percentage instead of value. Reminders: on/off, a switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
 | Warlock, Priest, Mage | Also show the icon out of combat. Buttons to unlock/lock the icon for dragging, reset its position, and show debug info. Opening Edit Mode also unlocks it. |
 | Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
-| FPS & Latency | Show FPS, show latency, text size. Buttons to unlock/lock the text for dragging and reset its position. |
+| FPS & Latency | Show FPS, show latency, text size. Sliders for where the latency turns orange and where it is fully red, and a button to restore the defaults. Buttons to unlock/lock the text for dragging and reset its position. |
 | Quest Item Sparkles | None besides the module switch. Changing it shows a reminder that the change takes effect after you log out and back in. |
 
 ## Layout
@@ -106,7 +106,7 @@ function M:BuildOptions(page)
 end
 ```
 
-`page:Text(text)` adds a paragraph. The page re-reads every `get` and button label whenever it is shown or a control is used.
+`page:Text(text)` adds a paragraph. `page:Slider({ label, description, min, max, step, get, set, format })` adds a slider with its value shown next to it. The page re-reads every `get` and button label whenever it is shown or a control is used.
 
 Hooks installed with `hooksecurefunc` or `HookScript` cannot be removed, so guard them with `if M.active then ... end`.
 

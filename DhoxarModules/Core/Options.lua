@@ -9,6 +9,8 @@
 --   page:Text(text)
 --   page:Checkbox({ label = ..., description = ..., get = fn, set = fn(value) })
 --   page:Button({ label = ..., description = ..., text = string or fn, onClick = fn })
+--   page:Slider({ label = ..., description = ..., min = n, max = n, step = n,
+--                 get = fn, set = fn(value), format = fn(value) })
 --
 -- Every control re-reads its value on Options:Refresh(), which runs when the
 -- window opens, when a page is shown, and after any control is used.
@@ -200,6 +202,72 @@ function Page:Button(opts)
     button:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
 
     self:OnRefresh(function() button:SetLabel(ButtonText()) end)
+    self:Place(row, height)
+    return row
+end
+
+-- A draggable slider with the current value next to it.
+-- opts: label, description, min, max, step (default 1), get, set(value),
+-- format(value) (optional, text shown next to the slider).
+function Page:Slider(opts)
+    local step = opts.step or 1
+    local row = CreateFrame("Frame", nil, self.frame)
+    local _, _, textHeight = LabelBlock(row, 0, CONTENT_W - 230, opts.label, opts.description)
+    local height = math.max(textHeight, 24)
+    row:SetSize(CONTENT_W, height)
+
+    local valueText = W.Text(row, "GameFontHighlight", C.text, 64)
+    valueText:SetJustifyH("RIGHT")
+    valueText:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -4)
+
+    local slider = CreateFrame("Slider", nil, row)
+    slider:SetOrientation("HORIZONTAL")
+    slider:SetSize(150, 18)
+    slider:SetPoint("TOPRIGHT", row, "TOPRIGHT", -72, -1)
+    slider:SetMinMaxValues(opts.min, opts.max)
+    slider:SetValueStep(step)
+    if slider.SetObeyStepOnDrag then slider:SetObeyStepOnDrag(true) end
+    slider:SetHitRectInsets(0, 0, -4, -4)
+
+    local track = slider:CreateTexture(nil, "BACKGROUND")
+    W.SetColor(track, C.track)
+    track:SetHeight(4)
+    track:SetPoint("LEFT", slider, "LEFT", 0, 0)
+    track:SetPoint("RIGHT", slider, "RIGHT", 0, 0)
+
+    local thumb = slider:CreateTexture(nil, "OVERLAY")
+    W.SetColor(thumb, C.accent)
+    thumb:SetSize(8, 16)
+    slider:SetThumbTexture(thumb)
+
+    local function Format(v)
+        if opts.format then
+            local ok, text = pcall(opts.format, v)
+            if ok and text then return text end
+        end
+        return tostring(v)
+    end
+
+    local updating = false
+    self:OnRefresh(function()
+        local ok, v = pcall(opts.get)
+        if not ok or type(v) ~= "number" then return end
+        updating = true
+        slider:SetValue(v)
+        updating = false
+        valueText:SetText(Format(v))
+    end)
+
+    slider:SetScript("OnValueChanged", function(_, v)
+        if updating then return end
+        v = math.floor(v / step + 0.5) * step
+        local ok, err = pcall(opts.set, v)
+        if not ok then
+            ReportError("could not change " .. tostring(opts.label), err)
+        end
+        Options:Refresh()
+    end)
+
     self:Place(row, height)
     return row
 end
