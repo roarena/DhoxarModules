@@ -15,7 +15,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 
 ## Install
 
-**Windows, automatic:** download [`Install-DhoxarModules.bat`](https://github.com/roarena/DhoxarModules/raw/main/Install-DhoxarModules.bat) and double-click it. It downloads the latest release and installs it into `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns`, replacing the old version; your settings are kept. Run it again any time to update. If WoW is installed elsewhere, it asks for the folder, or pass it as an argument: `Install-DhoxarModules.bat "D:\Games\World of Warcraft\_forever_"`.
+**Windows, automatic:** download [`Install-DhoxarModules.bat`](https://github.com/roarena/DhoxarModules/raw/main/Install-DhoxarModules.bat) and double-click it. It asks for the full path of your AddOns folder (for example `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns`), downloads the latest release and installs it there, replacing the old version; your settings are kept. Run it again any time to update: it remembers the folder, so Enter is enough. You can also pass the folder as an argument: `Install-DhoxarModules.bat "D:\Games\World of Warcraft\_forever_\Interface\AddOns"`.
 
 **Manual:** download the zip from the [latest release](https://github.com/roarena/DhoxarModules/releases/latest) and extract it into `Interface/AddOns`. The folder must keep the name `DhoxarModules`.
 

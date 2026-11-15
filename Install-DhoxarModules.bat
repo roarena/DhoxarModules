@@ -2,9 +2,9 @@
 @echo off
 setlocal
 rem Downloads the latest Dhoxar Modules release from GitHub and installs it
-rem into the WoW AddOns folder. Usage:
-rem   Install-DhoxarModules.bat                 (default WoW Forever folder)
-rem   Install-DhoxarModules.bat "D:\Games\World of Warcraft\_forever_"
+rem into your WoW AddOns folder. Usage:
+rem   Install-DhoxarModules.bat              (asks for the AddOns folder)
+rem   Install-DhoxarModules.bat "D:\Games\World of Warcraft\_forever_\Interface\AddOns"
 set "DHX_ADDONS=%~1"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Expression (Get-Content -LiteralPath '%~f0' -Raw)"
 set "DHX_CODE=%errorlevel%"
@@ -19,7 +19,8 @@ $ProgressPreference = 'SilentlyContinue'   # the progress bar makes downloads ve
 
 $Repo = 'roarena/DhoxarModules'
 $AddonName = 'DhoxarModules'
-$DefaultAddOns = 'C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns'
+# The last folder used, offered again on the next run.
+$SavedPathFile = Join-Path $env:LOCALAPPDATA 'DhoxarModules\installer-addons-path.txt'
 
 function Read-TocVersion([string]$toc) {
     if (-not (Test-Path -LiteralPath $toc)) { return $null }
@@ -28,28 +29,65 @@ function Read-TocVersion([string]$toc) {
     return $null
 }
 
-# Accepts the AddOns folder itself, or a WoW folder that contains Interface\AddOns.
-function Resolve-AddOns([string]$path) {
-    if (-not $path) { return $null }
-    $path = $path.Trim().Trim('"').TrimEnd('\')
-    if (Test-Path -LiteralPath (Join-Path $path 'Interface\AddOns') -PathType Container) {
-        return (Join-Path $path 'Interface\AddOns')
+function Read-SavedPath {
+    if (Test-Path -LiteralPath $SavedPathFile) {
+        $saved = (Get-Content -LiteralPath $SavedPathFile -Raw).Trim()
+        if ($saved -and (Test-Path -LiteralPath $saved -PathType Container)) { return $saved }
     }
-    if (Test-Path -LiteralPath $path -PathType Container) { return $path }
     return $null
+}
+
+function Save-Path([string]$path) {
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path $SavedPathFile) | Out-Null
+        Set-Content -LiteralPath $SavedPathFile -Value $path
+    } catch { }
+}
+
+# Checks a typed path: it must be an existing folder. A path to the addon's
+# own folder (...\AddOns\DhoxarModules) is taken as its AddOns folder. Returns
+# the AddOns folder, or $null after explaining what is wrong.
+function Test-AddOnsPath([string]$path) {
+    $path = $path.Trim().Trim('"').TrimEnd('\')
+    if (-not $path) { return $null }
+    if ((Split-Path $path -Leaf) -eq $AddonName) { $path = Split-Path $path }
+    if (-not (Test-Path -LiteralPath $path -PathType Container)) {
+        Write-Host "Folder not found: $path" -ForegroundColor Yellow
+        return $null
+    }
+    if ((Split-Path $path -Leaf) -ne 'AddOns') {
+        $answer = Read-Host "This folder is not named AddOns. Install into '$path' anyway? (y/N)"
+        if ($answer -notmatch '^[yY]') { return $null }
+    }
+    return $path
+}
+
+function Read-AddOnsPath {
+    $saved = Read-SavedPath
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        Write-Host ''
+        Write-Host 'Full path of your WoW AddOns folder, for example:'
+        Write-Host '  C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns'
+        if ($saved) {
+            $typed = Read-Host "Path (Enter to use $saved, or type q to cancel)"
+            if (-not $typed) { $typed = $saved }
+        } else {
+            $typed = Read-Host 'Path (Enter to cancel)'
+        }
+        if (-not $typed -or $typed -eq 'q') { throw 'Cancelled.' }
+        $addOns = Test-AddOnsPath $typed
+        if ($addOns) { return $addOns }
+    }
+    throw 'No valid AddOns folder given.'
 }
 
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-    $requested = if ($env:DHX_ADDONS) { $env:DHX_ADDONS } else { $DefaultAddOns }
-    $addOns = Resolve-AddOns $requested
-    while (-not $addOns) {
-        Write-Host "AddOns folder not found: $requested"
-        $requested = Read-Host 'Paste your WoW folder or its Interface\AddOns folder (empty to cancel)'
-        if (-not $requested) { throw 'Cancelled.' }
-        $addOns = Resolve-AddOns $requested
-    }
+    $addOns = $null
+    if ($env:DHX_ADDONS) { $addOns = Test-AddOnsPath $env:DHX_ADDONS }
+    if (-not $addOns) { $addOns = Read-AddOnsPath }
+    Save-Path $addOns
 
     Write-Host "Checking the latest release of $Repo..."
     $headers = @{ 'User-Agent' = 'DhoxarModules-installer'; 'Accept' = 'application/vnd.github+json' }
