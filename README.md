@@ -9,6 +9,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 | Simplified Warrior Ragebar | One centered text (value or percentage) on the Personal Resource Display's health and rage bars. Warriors only. |
 | Simple Warrior Reminders | In-combat icons: Battle Shout missing or fading, Overpower/Revenge ready, Execute ready, Victory Rush ready. Warriors only. |
 | Quest XP Bar | Shades the XP bar green with the XP your completed quests will award. |
+| Quest Item Sparkles | Keeps the loot sparkle on quest items showing: graphics presets turn it off, this turns it back on. Does not change your outline mode. |
 
 ## Install
 
@@ -32,6 +33,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 | Simplified Warrior Ragebar | Show percentage instead of value. |
 | Simple Warrior Reminders | A switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
 | Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
+| Quest Item Sparkles | None besides the module switch. Changing it shows a reminder that the change takes effect after you log out and back in. |
 
 ## Layout
 
@@ -49,6 +51,7 @@ DhoxarModules/
     WarriorRagebar.lua
     WarriorReminders.lua
     QuestXPBar.lua
+    QuestSparkles.lua
 ```
 
 Settings live in `DhoxarModulesDB.modules[<key>]`.
@@ -70,6 +73,7 @@ local M = ns:RegisterModule({
 
 function M:OnEnable()  end -- register events, show frames
 function M:OnDisable() end -- unregister events, hide frames
+function M:OnUserToggle(enabled) end -- optional: the user switched it (not called at login)
 
 -- Optional: settings on the module's page in the configuration window.
 function M:BuildOptions(page)

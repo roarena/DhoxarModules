@@ -19,6 +19,8 @@
 --   BuildOptions(self, page)  add settings to the module's page in the
 --                             configuration window (API in Core/Options.lua)
 --   ImportLegacy(self, old)   copy settings from the standalone addon's table
+--   OnUserToggle(self, enabled)  the user switched the module on or off
+--                             (not called at login)
 --
 -- The core fills in:
 --   module.db      the module's saved settings (module.db.enabled is the
@@ -194,6 +196,7 @@ function ns:SetModuleEnabled(key, enabled, verbose)
     local module = self.modules[key]
     if not module then return end
     enabled = enabled and true or false
+    local changed = module.db.enabled ~= enabled
     module.db.enabled = enabled
     if self.started then
         if enabled then
@@ -201,6 +204,9 @@ function ns:SetModuleEnabled(key, enabled, verbose)
         else
             self:StopModule(module)
         end
+    end
+    if changed and type(module.OnUserToggle) == "function" then
+        pcall(module.OnUserToggle, module, enabled)
     end
     if self.Options then
         self.Options:Refresh()
