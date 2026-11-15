@@ -104,3 +104,7 @@ end
 `page:Text(text)` adds a paragraph. The page re-reads every `get` and button label whenever it is shown or a control is used.
 
 Hooks installed with `hooksecurefunc` or `HookScript` cannot be removed, so guard them with `if M.active then ... end`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
