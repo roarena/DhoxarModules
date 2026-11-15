@@ -16,7 +16,8 @@
 --                standalone addon this module replaces
 --   OnEnable(self)            start doing work (may run more than once)
 --   OnDisable(self)           stop doing work
---   BuildOptions(self, page)  add settings to the module's options page
+--   BuildOptions(self, page)  add settings to the module's page in the
+--                             configuration window (API in Core/Options.lua)
 --   ImportLegacy(self, old)   copy settings from the standalone addon's table
 --
 -- The core fills in:
@@ -32,7 +33,7 @@ ns.modules = {}    -- key -> module
 ns.moduleList = {} -- registration order
 ns.started = false
 
-local PREFIX = "|cff33bbffDhoxar Modules|r: "
+local PREFIX = "|cffc8aa88Dhoxar Modules|r: "
 
 function ns:Print(msg)
     print(PREFIX .. tostring(msg))
@@ -194,11 +195,15 @@ function ns:SetModuleEnabled(key, enabled, verbose)
     if not module then return end
     enabled = enabled and true or false
     module.db.enabled = enabled
-    if not self.started then return end
-    if enabled then
-        self:StartModule(module, verbose)
-    else
-        self:StopModule(module)
+    if self.started then
+        if enabled then
+            self:StartModule(module, verbose)
+        else
+            self:StopModule(module)
+        end
+    end
+    if self.Options then
+        self.Options:Refresh()
     end
 end
 
@@ -262,7 +267,7 @@ end
 
 local function PrintHelp()
     ns:Print("commands:")
-    print("  /dhoxar - open the options panel")
+    print("  /dhoxar - open or close the configuration window")
     print("  /dhoxar list - show every module and its state")
     print("  /dhoxar enable <module> - turn a module on")
     print("  /dhoxar disable <module> - turn a module off")
@@ -276,7 +281,7 @@ SlashCmdList["DHOXARMODULES"] = function(msg)
     command = (command or ""):lower()
 
     if command == "" or command == "options" or command == "config" then
-        if not (ns.Options and ns.Options:Open()) then
+        if not (ns.Options and ns.Options:Toggle()) then
             PrintStatus()
             PrintHelp()
         end

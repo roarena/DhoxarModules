@@ -1,6 +1,6 @@
 # Dhoxar Modules
 
-A single World of Warcraft addon that bundles several small UI modules behind one options panel.
+A single World of Warcraft addon that bundles several small UI modules behind one configuration window.
 
 Built for WoW Forever 1.60.1 (interface version `16001`).
 
@@ -22,15 +22,15 @@ Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorRem
 
 ## Use
 
-- `/dhoxar` opens the options panel (also under Interface Options > AddOns > Dhoxar Modules). The main page enables or disables each module; each module has its own sub-page.
+- `/dhoxar` opens or closes the configuration window. Interface Options > AddOns > Dhoxar Modules has a button that opens it too.
 - `/dhoxar list`, `/dhoxar enable <module>`, `/dhoxar disable <module>`.
 
-`/dhoxar` is the only slash command; everything else is on the module pages:
+The window has an **Overview** page with a card per module (status, on/off switch, link to its settings) and a page per module in the sidebar. It can be dragged by its title bar, remembers where you left it, and closes with Esc. `/dhoxar` is the only slash command; everything else is on the module pages:
 
 | Module page | Options |
 | --- | --- |
 | Simplified Warrior Ragebar | Show percentage instead of value. |
-| Simple Warrior Reminders | A checkbox per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
+| Simple Warrior Reminders | A switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
 | Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
 
 ## Layout
@@ -41,7 +41,10 @@ DhoxarModules/
   Core/
     Core.lua      registry, saved variables, start/stop, /dhoxar
     Util.lua      secret-value helpers, copyable text window
-    Options.lua   options panel
+    Widgets.lua   styled buttons, switches and colors for the UI
+    Options.lua   configuration window and the page API modules use
+  Media/
+    logo.tga      addon icon (128x128, made from logo.jpg)
   Modules/
     WarriorRagebar.lua
     WarriorReminders.lua
@@ -61,18 +64,31 @@ local _, ns = ...
 local M = ns:RegisterModule({
     key = "MyModule",
     title = "My Module",
-    description = "Shown as the tooltip of the enable checkbox.",
+    description = "Shown on the module's card and page.",
     defaults = { someOption = true },
 })
 
 function M:OnEnable()  end -- register events, show frames
 function M:OnDisable() end -- unregister events, hide frames
 
+-- Optional: settings on the module's page in the configuration window.
 function M:BuildOptions(page)
-    page:Checkbox("MYMODULE_SOME_OPTION", "Some option", "Tooltip.", true,
-        function() return M.db.someOption end,
-        function(value) M.db.someOption = value end)
+    page:Header("Options")
+    page:Checkbox({
+        label = "Some option",
+        description = "What it does.",
+        get = function() return M.db.someOption end,
+        set = function(value) M.db.someOption = value end,
+    })
+    page:Button({
+        label = "Do something",
+        description = "What clicking it does.",
+        text = "Run", -- or a function returning the label
+        onClick = function() end,
+    })
 end
 ```
+
+`page:Text(text)` adds a paragraph. The page re-reads every `get` and button label whenever it is shown or a control is used.
 
 Hooks installed with `hooksecurefunc` or `HookScript` cannot be removed, so guard them with `if M.active then ... end`.

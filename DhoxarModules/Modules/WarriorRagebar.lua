@@ -144,14 +144,16 @@ function M:OnDisable()
 end
 
 function M:BuildOptions(page)
-    page:Checkbox("RAGEBAR_SHOW_PERCENT", "Show percentage instead of value",
-        "When checked, the Personal Resource Display shows the percentage centered in the bar. When unchecked, it shows the raw value instead.",
-        false,
-        function() return IsPercentMode() end,
-        function(value)
+    page:Header("Display")
+    page:Checkbox({
+        label = "Show percentage instead of value",
+        description = "When on, the Personal Resource Display shows the percentage centered in the bar. When off, it shows the raw value instead.",
+        get = IsPercentMode,
+        set = function(value)
             M.db.showPercentage = value and true or false
             CleanNow()
-        end)
+        end,
+    })
 end
 
 function M:ImportLegacy(old)

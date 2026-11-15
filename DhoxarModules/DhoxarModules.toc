@@ -2,12 +2,14 @@
 ## Title: Dhoxar Modules
 ## Notes: A collection of small UI modules (Simplified Warrior Ragebar, Simple Warrior Reminders, Quest XP Bar) managed from one options panel. Type /dhoxar.
 ## Author: rodrigoarenacamara
-## Version: 1.0.0
+## Version: 1.1.0
+## IconTexture: Interface\AddOns\DhoxarModules\Media\logo
 ## SavedVariables: DhoxarModulesDB
 
-# Main module: registry, saved variables, options UI, slash commands.
+# Main module: registry, saved variables, configuration window, slash commands.
 Core\Core.lua
 Core\Util.lua
+Core\Widgets.lua
 Core\Options.lua
 
 # Feature modules. Each file is self-contained and registers itself with

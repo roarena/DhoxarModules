@@ -45,7 +45,7 @@ function Util.ShowCopyableText(title, text)
         local f = CreateFrame("Frame", "DhoxarModulesCopyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         f:SetSize(520, 420)
         f:SetPoint("CENTER")
-        f:SetFrameStrata("DIALOG")
+        f:SetFrameStrata("FULLSCREEN_DIALOG") -- above the configuration window
         f:SetMovable(true)
         f:EnableMouse(true)
         f:RegisterForDrag("LeftButton")

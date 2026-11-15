@@ -289,11 +289,19 @@ function M:OnDisable()
 end
 
 function M:BuildOptions(page)
-    page:Checkbox("QUESTXP_SHOW_TOOLTIP", "Show quest list on mouse over",
-        "When checked, hovering the XP bar adds the completed quests and the XP each will award to the tooltip. The green segment on the bar is shown either way.",
-        true,
-        function() return IsTooltipOn() end,
-        function(value) M.db.showTooltip = value and true or false end)
-    page:Button("Completed quests", "Print to chat", PrintReport,
-        "Lists every completed quest in your log and the XP it will award.")
+    page:Header("Tooltip")
+    page:Checkbox({
+        label = "Show quest list on mouse over",
+        description = "Hovering the XP bar adds the completed quests and the XP each will award to the tooltip. The green segment on the bar is shown either way.",
+        get = IsTooltipOn,
+        set = function(value) M.db.showTooltip = value and true or false end,
+    })
+
+    page:Header("Report")
+    page:Button({
+        label = "Completed quests",
+        description = "Lists every completed quest in your log and the XP it will award, in the chat window.",
+        text = "Print to chat",
+        onClick = PrintReport,
+    })
 end

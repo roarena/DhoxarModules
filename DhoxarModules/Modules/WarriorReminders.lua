@@ -731,7 +731,7 @@ local function EnterUnlockMode(silent)
         f:Show()
     end
     if not silent then
-        print(TAG .. "unlocked, drag the icons to reposition. Click Unlock / Lock in the options again when done.")
+        print(TAG .. "unlocked, drag the icons to reposition. Type /dhoxar and click Lock when done.")
     end
 end
 
@@ -1041,7 +1041,7 @@ function M:OnDisable()
     UpdateVisibility() -- out of combat, so this hides every icon
 end
 
--- One checkbox per reminder, in the order shown on the options page.
+-- One toggle per reminder, in the order shown on the module's page.
 local REMINDER_OPTIONS = {
     { key = "shout", name = SHOUT_NAME, tooltip = "Shows an icon in combat when Battle Shout is missing, and a countdown during its last 10 seconds." },
     { key = "overpower", name = OVERPOWER_NAME, tooltip = "Shows an icon in combat when Overpower is usable and off cooldown." },
@@ -1051,27 +1051,48 @@ local REMINDER_OPTIONS = {
 }
 
 function M:BuildOptions(page)
+    page:Header("Reminders")
     for _, option in ipairs(REMINDER_OPTIONS) do
         local key = option.key
-        page:Checkbox("REMINDERS_" .. key, option.name .. " reminder", option.tooltip, true,
-            function() return IsReminderOn(key) end,
-            function(value)
+        page:Checkbox({
+            label = option.name,
+            description = option.tooltip,
+            get = function() return IsReminderOn(key) end,
+            set = function(value)
                 SetReminderOn(key, value)
                 if M.active then UpdateVisibility() end
-            end)
+            end,
+        })
     end
 
-    page:Button("Icon positions", "Unlock / Lock", function()
-        if unlocked then
-            EnterLockMode(false)
-        else
-            EnterUnlockMode(false)
-        end
-    end, "Unlocks the reminder icons so you can drag them; click again to lock. Close this panel to see them. Opening Edit Mode also unlocks them.")
-    page:Button("Reset positions", "Reset", ResetPositions,
-        "Moves every reminder icon back to its default position.")
-    page:Button("Debug info", "Show", ShowDebug,
-        "Opens a window with the module's current state, to copy into a bug report.")
+    page:Header("Icons")
+    page:Button({
+        label = "Icon positions",
+        description = "Unlocks the reminder icons so you can drag them. This window closes so they are not hidden behind it; type /dhoxar and click Lock when done. Opening Edit Mode also unlocks them.",
+        text = function() return unlocked and "Lock" or "Unlock" end,
+        onClick = function()
+            if unlocked then
+                EnterLockMode(false)
+            else
+                EnterUnlockMode(false)
+                if unlocked then ns.Options:Close() end
+            end
+        end,
+    })
+    page:Button({
+        label = "Reset positions",
+        description = "Moves every reminder icon back to its default position.",
+        text = "Reset",
+        onClick = ResetPositions,
+    })
+
+    page:Header("Troubleshooting")
+    page:Button({
+        label = "Debug info",
+        description = "Opens a window with the module's current state, to copy into a bug report.",
+        text = "Show",
+        onClick = ShowDebug,
+    })
 end
 
 -- Copies icon positions saved by the standalone addon, including its two
