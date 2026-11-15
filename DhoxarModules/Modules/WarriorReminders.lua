@@ -188,7 +188,20 @@ local function QuerySpellCooldownRemaining(id)
     if start == 0 or duration <= 1.5 then
         return 0
     end
-    return math.max(0, start + duration - GetTime())
+    return math.max(0, start + duration - GetTime()), duration
+end
+
+-- The spell's full cooldown in seconds from the client's static spell data,
+-- or nil if unknown or only the GCD.
+local function QuerySpellBaseCooldown(id)
+    if type(GetSpellBaseCooldown) ~= "function" then
+        return nil
+    end
+    local ok, ms = pcall(GetSpellBaseCooldown, id)
+    if not ok or type(ms) ~= "number" or isSecret(ms) or ms <= 1500 then
+        return nil
+    end
+    return ms / 1000
 end
 
 ---------------------------------------------------------------------------
@@ -369,7 +382,8 @@ local EXECUTE = {
 }
 
 -- Victory Rush: usable for a short window after a kill that grants XP or
--- honor, which IsSpellUsable reflects. It has its own icon.
+-- honor, which IsSpellUsable reflects. It has its own icon. cooldown = 0 is
+-- only the last resort: the real cooldown comes from ReactiveCooldownLength.
 local VICTORY_RUSH = {
     key = "victoryrush", name = VICTORY_RUSH_NAME, icon = VICTORY_RUSH_ICON, ids = VICTORY_RUSH_IDS, idSet = ToSet(VICTORY_RUSH_IDS),
     glow = false, cooldown = 0, lastCast = 0,
@@ -387,12 +401,21 @@ end
 
 -- Seconds left on the spell's cooldown: the client's value when readable,
 -- otherwise our own timer from the last successful cast.
+-- The fallback timer's length is, in order: the cooldown last seen while the
+-- client still reported it, the spell's base cooldown, then r.cooldown.
+local function ReactiveCooldownLength(r, id)
+    return r.learnedCooldown or QuerySpellBaseCooldown(id) or r.cooldown
+end
+
 local function ReactiveCooldownLeft(r, id)
-    local remaining = QuerySpellCooldownRemaining(id)
+    local remaining, duration = QuerySpellCooldownRemaining(id)
     if remaining ~= nil then
+        if duration then
+            r.learnedCooldown = duration
+        end
         return remaining, "client"
     end
-    return math.max(0, r.lastCast + r.cooldown - GetTime()), "own timer"
+    return math.max(0, r.lastCast + ReactiveCooldownLength(r, id) - GetTime()), "own timer"
 end
 
 -- Ready = proc active AND off cooldown. Usability ignores cooldowns, so a
@@ -979,6 +1002,9 @@ local function BuildDebugText()
         if id then
             local left, source = ReactiveCooldownLeft(r, id)
             lines[#lines + 1] = ("usable=%s, cooldownLeft=%.1f (from %s)"):format(tostring(QuerySpellUsable(id)), left, source)
+            lines[#lines + 1] = ("ownTimer=%.1fs (learned=%s, base=%s, default=%s), lastCast=%s"):format(
+                ReactiveCooldownLength(r, id), tostring(r.learnedCooldown), tostring(QuerySpellBaseCooldown(id)),
+                tostring(r.cooldown), r.lastCast > 0 and ("%.0fs ago"):format(GetTime() - r.lastCast) or "never")
             lines[#lines + 1] = "  " .. DescribeRawUsable(id)
             lines[#lines + 1] = "  " .. DescribeRawCooldown(id)
         end
