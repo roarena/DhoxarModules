@@ -6,8 +6,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 
 | Module | What it does |
 | --- | --- |
-| Simplified Warrior Ragebar | One centered text (value or percentage) on the Personal Resource Display's health and rage bars. Warriors only. |
-| Simple Warrior Reminders | In-combat icons: Battle Shout missing or fading, Overpower/Revenge ready, Execute ready, Victory Rush ready. Warriors only. |
+| Warrior | Warriors only, and shown as disabled on other classes. Two features, each with its own switch: **Simplified Warrior Ragebar** (one centered text, value or percentage, on the Personal Resource Display's health and rage bars) and **Simple Warrior Reminders** (in-combat icons: Battle Shout missing or fading, Overpower/Revenge ready, Execute ready, Victory Rush ready). |
 | Quest XP Bar | Shades the XP bar green with the XP your completed quests will award. |
 | Quest Item Sparkles | Keeps the loot sparkle on quest items showing: graphics presets turn it off, this turns it back on. Does not change your outline mode. |
 
@@ -15,7 +14,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 
 Copy (or symlink) the `DhoxarModules` folder into `Interface/AddOns`. The folder must keep the name `DhoxarModules`.
 
-Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorReminders`, `QuestXPBar`). A module refuses to run while its standalone version is loaded. If you log in once with both enabled, the module copies your old settings (icon positions, percentage option) before you disable the standalone addon.
+Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorReminders`, `QuestXPBar`). A module or feature refuses to run while its standalone version is loaded. If you log in once with both enabled, the module copies your old settings (icon positions, percentage option) before you disable the standalone addon.
 
 ## Development
 
@@ -30,8 +29,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 
 | Module page | Options |
 | --- | --- |
-| Simplified Warrior Ragebar | Show percentage instead of value. |
-| Simple Warrior Reminders | A switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
+| Warrior | Rage bar: on/off, show percentage instead of value. Reminders: on/off, a switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
 | Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
 | Quest Item Sparkles | None besides the module switch. Changing it shows a reminder that the change takes effect after you log out and back in. |
 
@@ -48,13 +46,15 @@ DhoxarModules/
   Media/
     logo.tga      addon icon (128x128, made from logo.jpg)
   Modules/
-    WarriorRagebar.lua
-    WarriorReminders.lua
+    Warrior/
+      Warrior.lua     the Warrior module; runs the features below
+      Ragebar.lua
+      Reminders.lua
     QuestXPBar.lua
     QuestSparkles.lua
 ```
 
-Settings live in `DhoxarModulesDB.modules[<key>]`.
+Settings live in `DhoxarModulesDB.modules[<key>]`; warrior features in `DhoxarModulesDB.modules.Warrior.features[<key>]`. A warrior feature registers with `ns.Warrior:AddFeature({...})`, which takes the same fields and callbacks as a module.
 
 ## Adding a module
 

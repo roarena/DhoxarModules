@@ -1,4 +1,4 @@
--- Module: Simplified Warrior Ragebar
+-- Warrior feature: Simplified Warrior Ragebar (shown on the Warrior page)
 --
 -- Hides one of the two texts on the Personal Resource Display's health/rage
 -- bars (percentage or raw value) and centers the one that remains.
@@ -17,12 +17,10 @@
 
 local _, ns = ...
 
-local M = ns:RegisterModule({
+local M = ns.Warrior:AddFeature({
     key = "WarriorRagebar",
     title = "Simplified Warrior Ragebar",
-    description = "Shows a single centered text on the Personal Resource Display's health and rage bars instead of the percentage and the value side by side. Warriors only.",
-    class = "WARRIOR",
-    aliases = { "ragebar" },
+    description = "Shows a single centered text on the Personal Resource Display's health and rage bars instead of the percentage and the value side by side.",
     defaults = { showPercentage = false },
     legacy = { addon = "SimplifiedWarriorRagebar", savedVariable = "SimplifiedWarriorRagebarDB" },
 })
@@ -57,7 +55,7 @@ end
 -- role (shown+centered vs hidden) the current setting assigns to it -
 -- isLeft is fixed for the widget's life, but which role wins the current
 -- setting can change any time the user flips the option. Hooks cannot be
--- removed, so they do nothing while the module is off.
+-- removed, so they do nothing while the feature is off.
 local function InstallHooks(fs, bar, isLeft)
     if not fs or hooked[fs] or not hooksecurefunc then return end
     hooked[fs] = true

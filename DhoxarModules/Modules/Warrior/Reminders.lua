@@ -1,8 +1,8 @@
--- Module: Simple Warrior Reminders
+-- Warrior feature: Simple Warrior Reminders (shown on the Warrior page)
 --
 -- In-combat reminder icons with a marching-dash border: Battle Shout
 -- missing/expiring, Overpower/Revenge ready, Execute ready, Victory Rush
--- ready. Each reminder can be turned off on the module's options page, and
+-- ready. Each reminder can be turned off on the Warrior page, and
 -- the icons are draggable from there or while Blizzard's Edit Mode is open.
 --
 -- Aura detection mirrors EllesmereUI AuraBuff Reminders: never enumerate auras
@@ -19,12 +19,10 @@ local _, ns = ...
 local isSecret = ns.Util.IsSecret
 local ToSet = ns.Util.ToSet
 
-local M = ns:RegisterModule({
+local M = ns.Warrior:AddFeature({
     key = "WarriorReminders",
     title = "Simple Warrior Reminders",
-    description = "In-combat reminder icons: Battle Shout missing or about to fade, Overpower/Revenge ready, Execute ready, Victory Rush ready. Warriors only.",
-    class = "WARRIOR",
-    aliases = { "reminders" },
+    description = "In-combat reminder icons: Battle Shout missing or about to fade, Overpower/Revenge ready, Execute ready, Victory Rush ready.",
     defaults = {
         icons = {},
         -- Which reminders the user wants; see IsReminderOn.
@@ -740,7 +738,7 @@ local function EnterUnlockMode(silent)
     end
     if not M.active then
         if not silent then
-            print(TAG .. "the module is not running. Type /dhoxar list.")
+            print(TAG .. "this feature is not running. Check the Warrior page in /dhoxar.")
         end
         return
     end
@@ -1067,7 +1065,7 @@ function M:OnDisable()
     UpdateVisibility() -- out of combat, so this hides every icon
 end
 
--- One toggle per reminder, in the order shown on the module's page.
+-- One toggle per reminder, in the order shown on the Warrior page.
 local REMINDER_OPTIONS = {
     { key = "shout", name = SHOUT_NAME, tooltip = "Shows an icon in combat when Battle Shout is missing, and a countdown during its last 10 seconds." },
     { key = "overpower", name = OVERPOWER_NAME, tooltip = "Shows an icon in combat when Overpower is usable and off cooldown." },
@@ -1115,7 +1113,7 @@ function M:BuildOptions(page)
     page:Header("Troubleshooting")
     page:Button({
         label = "Debug info",
-        description = "Opens a window with the module's current state, to copy into a bug report.",
+        description = "Opens a window with this feature's current state, to copy into a bug report.",
         text = "Show",
         onClick = ShowDebug,
     })

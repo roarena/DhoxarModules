@@ -49,6 +49,9 @@ local function ModuleStatus(module)
     if module.active then
         return "Running", C.good
     end
+    if not ns:IsAvailable(module) then
+        return "Disabled - " .. ns:GetBlockReason(module), C.off
+    end
     if module.db.enabled then
         local reason = ns:GetBlockReason(module)
         return "Enabled, not running" .. (reason and (" - " .. reason) or ""), C.warn
@@ -227,7 +230,7 @@ local function AddModuleCard(page, module)
     status:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 13, -10)
 
     local toggle = W.Toggle(card, function()
-        ns:SetModuleEnabled(module.key, not module.db.enabled, true)
+        ns:SetModuleEnabled(module.key, not ns:IsModuleOn(module), true)
         Options:Refresh()
     end)
     toggle:SetPoint("TOPRIGHT", card, "TOPRIGHT", -inset, -inset)
@@ -241,7 +244,7 @@ local function AddModuleCard(page, module)
     card:SetSize(CONTENT_W, height)
 
     page:OnRefresh(function()
-        toggle:SetChecked(module.db.enabled)
+        toggle:SetChecked(ns:IsModuleOn(module))
         local text, color = ModuleStatus(module)
         status:SetText(text)
         status:SetTextColor(color[1], color[2], color[3])
@@ -278,7 +281,7 @@ local function BuildModulePage(page, module)
     page:Checkbox({
         label = "Enabled",
         description = module.class and ("Only runs on " .. module.class:lower() .. " characters.") or nil,
-        get = function() return module.db.enabled == true end,
+        get = function() return ns:IsModuleOn(module) end,
         set = function(value) ns:SetModuleEnabled(module.key, value, true) end,
     })
 

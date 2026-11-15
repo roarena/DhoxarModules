@@ -147,12 +147,23 @@ end
 
 -- Why a module may not run right now: reason text, and whether that reason
 -- is routine (not worth a chat message at login). nil when it may run.
+-- False for a class module on a character of another class. Such a module
+-- counts as disabled there, whatever was saved by the account's other
+-- characters.
+function ns:IsAvailable(module)
+    if not module.class then return true end
+    local ok, _, class = pcall(UnitClass, "player")
+    return ok and class == module.class
+end
+
+-- Whether the module is switched on for this character.
+function ns:IsModuleOn(module)
+    return module.db.enabled == true and self:IsAvailable(module)
+end
+
 function ns:GetBlockReason(module)
-    if module.class then
-        local ok, _, class = pcall(UnitClass, "player")
-        if not ok or class ~= module.class then
-            return ("only runs on %s characters."):format(module.class:lower()), true
-        end
+    if not self:IsAvailable(module) then
+        return ("only runs on %s characters."):format(module.class:lower()), true
     end
     if module.legacy and IsAddOnLoadedSafe(module.legacy.addon) then
         return ("the standalone %s addon is still enabled. Disable it and /reload to use this module."):format(module.legacy.addon), false
@@ -196,6 +207,12 @@ function ns:SetModuleEnabled(key, enabled, verbose)
     local module = self.modules[key]
     if not module then return end
     enabled = enabled and true or false
+    -- Never save a choice from a character the module does not run on.
+    if not self:IsAvailable(module) then
+        self:Print(module.title .. ": " .. self:GetBlockReason(module))
+        if self.Options then self.Options:Refresh() end
+        return
+    end
     local changed = module.db.enabled ~= enabled
     module.db.enabled = enabled
     if self.started then
@@ -222,7 +239,7 @@ local function Start()
     ns.started = true
     for _, module in ipairs(ns.moduleList) do
         ImportLegacy(module)
-        if module.db.enabled then
+        if ns:IsModuleOn(module) then
             ns:StartModule(module, false)
         end
     end
@@ -261,6 +278,8 @@ local function PrintStatus()
         local state
         if module.active then
             state = "|cff40ff40running|r"
+        elseif not ns:IsAvailable(module) then
+            state = "|cffff4040disabled|r - " .. ns:GetBlockReason(module)
         elseif module.db.enabled then
             local reason = ns:GetBlockReason(module)
             state = "|cffffd040enabled, not running|r" .. (reason and (" - " .. reason) or "")
