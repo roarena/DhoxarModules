@@ -22,8 +22,14 @@ local M = ns:RegisterModule({
     key = "QuestXPBar",
     title = "Quest XP Bar",
     description = "Shades the XP bar faint green with the XP you will earn by turning in your completed quests.",
-    aliases = { "questxp", "qxp" },
+    aliases = { "questxp" },
+    defaults = { showTooltip = true },
 })
+
+-- Whether hovering the XP bar lists the completed quests in the tooltip.
+local function IsTooltipOn()
+    return M.db.showTooltip ~= false
+end
 
 local COLOR = { 0.25, 1.0, 0.25, 0.45 } -- faint green
 local TAG = "|cff66ff66Quest XP Bar|r: "
@@ -165,7 +171,7 @@ local function EnsureOverlay()
 
     if hoverFrame and hoverFrame.HookScript then
         hoverFrame:HookScript("OnEnter", function(self)
-            if not M.active or lastTotal <= 0 then return end
+            if not M.active or not IsTooltipOn() or lastTotal <= 0 then return end
             if not (GameTooltip:IsShown() and GameTooltip:GetOwner() == self) then
                 GameTooltip:SetOwner(self, "ANCHOR_TOP")
                 GameTooltip:ClearLines()
@@ -179,7 +185,7 @@ local function EnsureOverlay()
             GameTooltip:Show()
         end)
         hoverFrame:HookScript("OnLeave", function()
-            if M.active then GameTooltip:Hide() end
+            if M.active and IsTooltipOn() then GameTooltip:Hide() end
         end)
     end
     return true
@@ -251,7 +257,7 @@ local watcher
 
 local function PrintReport()
     if not M.active then
-        print(TAG .. "the module is disabled. Type /dhoxar enable questxp.")
+        print(TAG .. "the module is not running. Type /dhoxar list.")
         return
     end
     Update()
@@ -283,9 +289,11 @@ function M:OnDisable()
 end
 
 function M:BuildOptions(page)
+    page:Checkbox("QUESTXP_SHOW_TOOLTIP", "Show quest list on mouse over",
+        "When checked, hovering the XP bar adds the completed quests and the XP each will award to the tooltip. The green segment on the bar is shown either way.",
+        true,
+        function() return IsTooltipOn() end,
+        function(value) M.db.showTooltip = value and true or false end)
     page:Button("Completed quests", "Print to chat", PrintReport,
-        "Lists every completed quest in your log and the XP it will award. Same as typing /qxp.")
+        "Lists every completed quest in your log and the XP it will award.")
 end
-
-SLASH_DHOXARQUESTXPBAR1 = "/qxp"
-SlashCmdList["DHOXARQUESTXPBAR"] = PrintReport

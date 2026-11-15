@@ -2,7 +2,8 @@
 --
 -- In-combat reminder icons with a marching-dash border: Battle Shout
 -- missing/expiring, Overpower/Revenge ready, Execute ready, Victory Rush
--- ready. Icons are draggable via /swr unlock or Blizzard's Edit Mode.
+-- ready. Each reminder can be turned off on the module's options page, and
+-- the icons are draggable from there or while Blizzard's Edit Mode is open.
 --
 -- Aura detection mirrors EllesmereUI AuraBuff Reminders: never enumerate auras
 -- (index/slot scans and AuraUtil hard-error under the secret-value system).
@@ -23,12 +24,31 @@ local M = ns:RegisterModule({
     title = "Simple Warrior Reminders",
     description = "In-combat reminder icons: Battle Shout missing or about to fade, Overpower/Revenge ready, Execute ready, Victory Rush ready. Warriors only.",
     class = "WARRIOR",
-    aliases = { "reminders", "swr" },
-    defaults = { icons = {} },
+    aliases = { "reminders" },
+    defaults = {
+        icons = {},
+        -- Which reminders the user wants; see IsReminderOn.
+        reminders = { shout = true, overpower = true, revenge = true, execute = true, victoryrush = true },
+    },
     legacy = { addon = "SimpleWarriorReminders", savedVariable = "SimpleWarriorRemindersDB" },
 })
 
 local TAG = "|cffff4444Simple Warrior Reminders|r: "
+
+-- Whether the user wants a given reminder. Keys: shout, overpower, revenge,
+-- execute, victoryrush. Anything not explicitly switched off is on, so a
+-- reminder added later is enabled for existing users.
+local function IsReminderOn(key)
+    local wanted = M.db.reminders
+    return type(wanted) ~= "table" or wanted[key] ~= false
+end
+
+local function SetReminderOn(key, on)
+    if type(M.db.reminders) ~= "table" then
+        M.db.reminders = {}
+    end
+    M.db.reminders[key] = on and true or false
+end
 
 local BATTLE_SHOUT_SPELL_ID = 6673
 -- 6673 is the id whitelisted on Midnight-style clients; the rest are the
@@ -324,8 +344,8 @@ end
 -- cooldown: the spell's own cooldown in seconds, used to time it ourselves
 -- from the last cast when the client won't report the cooldown in combat.
 local REACTIVES = {
-    { name = OVERPOWER_NAME, icon = OVERPOWER_ICON, ids = OVERPOWER_IDS, idSet = ToSet(OVERPOWER_IDS), glow = false, cooldown = 5, lastCast = 0 },
-    { name = REVENGE_NAME, icon = REVENGE_ICON, ids = REVENGE_IDS, idSet = ToSet(REVENGE_IDS), glow = false, cooldown = 5, lastCast = 0 },
+    { key = "overpower", name = OVERPOWER_NAME, icon = OVERPOWER_ICON, ids = OVERPOWER_IDS, idSet = ToSet(OVERPOWER_IDS), glow = false, cooldown = 5, lastCast = 0 },
+    { key = "revenge", name = REVENGE_NAME, icon = REVENGE_ICON, ids = REVENGE_IDS, idSet = ToSet(REVENGE_IDS), glow = false, cooldown = 5, lastCast = 0 },
 }
 
 -- Last-resort check when Execute's usability and glow are both unavailable:
@@ -344,14 +364,14 @@ end
 -- Execute: usable on a target under 20% health in Battle/Berserker Stance
 -- with enough rage, which IsSpellUsable reflects. It has its own icon.
 local EXECUTE = {
-    name = EXECUTE_NAME, icon = EXECUTE_ICON, ids = EXECUTE_IDS, idSet = ToSet(EXECUTE_IDS),
+    key = "execute", name = EXECUTE_NAME, icon = EXECUTE_ICON, ids = EXECUTE_IDS, idSet = ToSet(EXECUTE_IDS),
     glow = false, cooldown = 0, lastCast = 0, usableFallback = TargetInExecuteRange,
 }
 
 -- Victory Rush: usable for a short window after a kill that grants XP or
 -- honor, which IsSpellUsable reflects. It has its own icon.
 local VICTORY_RUSH = {
-    name = VICTORY_RUSH_NAME, icon = VICTORY_RUSH_ICON, ids = VICTORY_RUSH_IDS, idSet = ToSet(VICTORY_RUSH_IDS),
+    key = "victoryrush", name = VICTORY_RUSH_NAME, icon = VICTORY_RUSH_ICON, ids = VICTORY_RUSH_IDS, idSet = ToSet(VICTORY_RUSH_IDS),
     glow = false, cooldown = 0, lastCast = 0,
 }
 
@@ -376,8 +396,12 @@ local function ReactiveCooldownLeft(r, id)
 end
 
 -- Ready = proc active AND off cooldown. Usability ignores cooldowns, so a
--- proc can be lit during the cooldown; that case stays hidden.
+-- proc can be lit during the cooldown; that case stays hidden. A reminder
+-- the user switched off is never ready.
 local function IsReactiveReady(r)
+    if not IsReminderOn(r.key) then
+        return false
+    end
     local id = FirstKnownSpell(r.ids)
     if not id then
         return false
@@ -653,7 +677,7 @@ end
 -- during its last SHOUT_WARNING_SECONDS.
 local function UpdateShoutIcon()
     local show, expiring, left = false, false, nil
-    if inCombat and FirstKnownSpell(BATTLE_SHOUT_IDS) ~= nil then
+    if inCombat and IsReminderOn("shout") and FirstKnownSpell(BATTLE_SHOUT_IDS) ~= nil then
         if not HasBattleShout() then
             show = true
         else
@@ -707,7 +731,7 @@ local function EnterUnlockMode(silent)
         f:Show()
     end
     if not silent then
-        print(TAG .. "unlocked, drag the icons to reposition. Type /swr lock when done.")
+        print(TAG .. "unlocked, drag the icons to reposition. Click Unlock / Lock in the options again when done.")
     end
 end
 
@@ -938,8 +962,8 @@ local function BuildDebugText()
         ("moduleActive=%s, inCombat=%s, editModeHook=%s"):format(tostring(M.active), tostring(inCombat), editModeHookKind),
         "",
         "== Battle Shout ==",
-        ("learned=%s, hasBuff=%s, preCombatHasBuff=%s"):format(
-            tostring(FirstKnownSpell(BATTLE_SHOUT_IDS) ~= nil), tostring(HasBattleShout()), tostring(preCombatHasBuff)),
+        ("reminderOn=%s, learned=%s, hasBuff=%s, preCombatHasBuff=%s"):format(
+            tostring(IsReminderOn("shout")), tostring(FirstKnownSpell(BATTLE_SHOUT_IDS) ~= nil), tostring(HasBattleShout()), tostring(preCombatHasBuff)),
         ("timeLeft=%s (icon shows at %ds or less)"):format(
             ShoutTimeLeft() and ("%.0f"):format(ShoutTimeLeft()) or "unknown", SHOUT_WARNING_SECONDS),
         ("auraReadable=%s, lastDuration=%s, secondsUntilPredictedExpiry=%s"):format(
@@ -950,7 +974,8 @@ local function BuildDebugText()
         local id = FirstKnownSpell(r.ids)
         lines[#lines + 1] = ""
         lines[#lines + 1] = ("== %s =="):format(r.name)
-        lines[#lines + 1] = ("knownId=%s, ready=%s, procGlow=%s"):format(tostring(id), tostring(IsReactiveReady(r)), tostring(r.glow))
+        lines[#lines + 1] = ("reminderOn=%s, knownId=%s, ready=%s, procGlow=%s"):format(
+            tostring(IsReminderOn(r.key)), tostring(id), tostring(IsReactiveReady(r)), tostring(r.glow))
         if id then
             local left, source = ReactiveCooldownLeft(r, id)
             lines[#lines + 1] = ("usable=%s, cooldownLeft=%.1f (from %s)"):format(tostring(QuerySpellUsable(id)), left, source)
@@ -1016,7 +1041,26 @@ function M:OnDisable()
     UpdateVisibility() -- out of combat, so this hides every icon
 end
 
+-- One checkbox per reminder, in the order shown on the options page.
+local REMINDER_OPTIONS = {
+    { key = "shout", name = SHOUT_NAME, tooltip = "Shows an icon in combat when Battle Shout is missing, and a countdown during its last 10 seconds." },
+    { key = "overpower", name = OVERPOWER_NAME, tooltip = "Shows an icon in combat when Overpower is usable and off cooldown." },
+    { key = "revenge", name = REVENGE_NAME, tooltip = "Shows an icon in combat when Revenge is usable and off cooldown. Shares its icon slot with Overpower." },
+    { key = "execute", name = EXECUTE_NAME, tooltip = "Shows an icon in combat when Execute is usable on your target." },
+    { key = "victoryrush", name = VICTORY_RUSH_NAME, tooltip = "Shows an icon in combat when Victory Rush is usable." },
+}
+
 function M:BuildOptions(page)
+    for _, option in ipairs(REMINDER_OPTIONS) do
+        local key = option.key
+        page:Checkbox("REMINDERS_" .. key, option.name .. " reminder", option.tooltip, true,
+            function() return IsReminderOn(key) end,
+            function(value)
+                SetReminderOn(key, value)
+                if M.active then UpdateVisibility() end
+            end)
+    end
+
     page:Button("Icon positions", "Unlock / Lock", function()
         if unlocked then
             EnterLockMode(false)
@@ -1047,28 +1091,5 @@ function M:ImportLegacy(old)
         if type(source) == "table" and source.point and icons[key] == nil then
             icons[key] = { point = source.point, relativePoint = source.relativePoint, x = source.x, y = source.y }
         end
-    end
-end
-
----------------------------------------------------------------------------
--- Slash commands
----------------------------------------------------------------------------
-
-SLASH_DHOXARWARRIORREMINDERS1 = "/swr"
-SLASH_DHOXARWARRIORREMINDERS2 = "/simplewarriorreminders"
-SlashCmdList["DHOXARWARRIORREMINDERS"] = function(msg)
-    msg = strtrim(msg or ""):lower()
-    if msg == "debug" then
-        ShowDebug()
-    elseif not M.active then
-        print(TAG .. "the module is not running. Type /dhoxar list.")
-    elseif msg == "unlock" then
-        EnterUnlockMode(false)
-    elseif msg == "lock" then
-        EnterLockMode(false)
-    elseif msg == "reset" then
-        ResetPositions()
-    else
-        print(TAG .. "commands: /swr unlock, /swr lock, /swr reset, /swr debug")
     end
 end

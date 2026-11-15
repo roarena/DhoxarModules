@@ -10,7 +10,7 @@ A single World of Warcraft addon that bundles several small UI modules behind on
 
 ## Install
 
-Copy (or symlink) `addon/DhoxarModules` into `Interface/AddOns`. The folder must keep the name `DhoxarModules`.
+Copy (or symlink) the `DhoxarModules` folder into `Interface/AddOns`. The folder must keep the name `DhoxarModules`.
 
 Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorReminders`, `QuestXPBar`). A module refuses to run while its standalone version is loaded. If you log in once with both enabled, the module copies your old settings (icon positions, percentage option) before you disable the standalone addon.
 
@@ -18,12 +18,19 @@ Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorRem
 
 - `/dhoxar` opens the options panel (also under Interface Options > AddOns > Dhoxar Modules). The main page enables or disables each module; each module has its own sub-page.
 - `/dhoxar list`, `/dhoxar enable <module>`, `/dhoxar disable <module>`.
-- `/swr unlock | lock | reset | debug` for the reminder icons, `/qxp` for the quest XP report.
+
+`/dhoxar` is the only slash command; everything else is on the module pages:
+
+| Module page | Options |
+| --- | --- |
+| Simplified Warrior Ragebar | Show percentage instead of value. |
+| Simple Warrior Reminders | A checkbox per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
+| Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
 
 ## Layout
 
 ```
-addon/DhoxarModules/
+DhoxarModules/
   DhoxarModules.toc
   Core/
     Core.lua      registry, saved variables, start/stop, /dhoxar
