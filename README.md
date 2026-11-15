@@ -16,6 +16,10 @@ Copy (or symlink) the `DhoxarModules` folder into `Interface/AddOns`. The folder
 
 Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorReminders`, `QuestXPBar`). A module refuses to run while its standalone version is loaded. If you log in once with both enabled, the module copies your old settings (icon positions, percentage option) before you disable the standalone addon.
 
+## Development
+
+`node scripts/sync-addon.js` mirrors `DhoxarModules` into the game's AddOns folder (`C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns` by default, or `WOW_ADDONS_DIR` if set). Then `/reload` in game. When working with Claude Code, a local hook runs it after every edit to the addon.
+
 ## Use
 
 - `/dhoxar` opens the options panel (also under Interface Options > AddOns > Dhoxar Modules). The main page enables or disables each module; each module has its own sub-page.
