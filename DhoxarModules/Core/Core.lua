@@ -116,6 +116,10 @@ local function InitDB()
         module.db = mdb
     end
     ns.db = db
+    -- The saved look (Modern or Classic), before any module builds frames.
+    if ns.Widgets then
+        pcall(ns.Widgets.ApplyTheme, db.theme or "modern")
+    end
 end
 
 -- One-time copy of settings from the standalone addon a module replaces.

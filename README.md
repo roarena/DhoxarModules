@@ -33,7 +33,7 @@ Disable the old standalone addons (`SimplifiedWarriorRagebar`, `SimpleWarriorRem
 - `/dhoxar` opens or closes the configuration window. Interface Options > AddOns > Dhoxar Modules has a button that opens it too.
 - `/dhoxar list`, `/dhoxar enable <module>`, `/dhoxar disable <module>`.
 
-The window has an **Overview** page with a card per module (status, on/off switch, link to its settings) and a page per module in the sidebar. It can be dragged by its title bar, remembers where you left it, and closes with Esc. `/dhoxar` is the only slash command; everything else is on the module pages:
+The window has an **Overview** page with a card per module (status, on/off switch, link to its settings) and a page per module in the sidebar. It can be dragged by its title bar, remembers where you left it, and closes with Esc. The **Look** button on the Overview page switches between two styles: **Modern** (flat dark panels) and **Classic** (the game's own window style: gold metal frame with the logo as portrait, gold text, red buttons, checkboxes). The choice is saved for the account. `/dhoxar` is the only slash command; everything else is on the module pages:
 
 | Module page | Options |
 | --- | --- |

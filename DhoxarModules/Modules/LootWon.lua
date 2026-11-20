@@ -19,6 +19,7 @@ local IsSecret = ns.Util.IsSecret
 local SafeCall = ns.Util.SafeCall
 local ItemInfo = ns.Util.ItemInfo
 local QualityColor = ns.Util.ItemQualityColor
+local W = ns.Widgets
 
 local M = ns:RegisterModule({
     key = "LootWon",
@@ -74,7 +75,8 @@ end
 -- Scales the icon and fonts with the window's height.
 local function Layout()
     local w, h = frame:GetSize()
-    local pad = math.max(4, math.floor(h * 0.1))
+    -- Classic has a 2px rim; keep the content inside it.
+    local pad = math.max(4, math.floor(h * 0.1)) + (frame.skin and frame.skin.inset or 0)
     local iconSize = h - pad * 2
     frame.icon:SetSize(iconSize, iconSize)
     frame.icon:SetPoint("LEFT", frame, "LEFT", pad, 0)
@@ -104,6 +106,7 @@ local function SetBorderColor(r, g, b)
         edge:SetColorTexture(r, g, b, 1)
     end
     frame.glow:SetColorTexture(r, g, b, 0.12)
+    frame.iconBorder:SetColorTexture(r, g, b, 1)
 end
 
 local ShowNext
@@ -166,28 +169,22 @@ local function CreateWindow()
     frame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     frame:Hide()
 
-    local bg = frame:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(frame)
-    bg:SetColorTexture(0.05, 0.05, 0.06, 0.9)
     frame.glow = frame:CreateTexture(nil, "BORDER")
     frame.glow:SetAllPoints(frame)
 
-    -- 1px border in the item's rarity color.
+    -- 1px border in the item's rarity color; anchored by the skin, inside
+    -- the classic rim.
     frame.edges = {}
-    local function Edge(p1, p2, horizontal)
-        local t = frame:CreateTexture(nil, "ARTWORK")
-        t:SetPoint(p1, frame, p1)
-        t:SetPoint(p2, frame, p2)
-        if horizontal then t:SetHeight(1) else t:SetWidth(1) end
-        frame.edges[#frame.edges + 1] = t
+    for i = 1, 4 do
+        frame.edges[i] = frame:CreateTexture(nil, "ARTWORK")
     end
-    Edge("TOPLEFT", "TOPRIGHT", true)
-    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
-    Edge("TOPLEFT", "BOTTOMLEFT", false)
-    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
 
-    frame.icon = frame:CreateTexture(nil, "ARTWORK")
+    frame.icon = frame:CreateTexture(nil, "ARTWORK", nil, 1)
     frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    -- Classic: a rarity-colored frame around the icon, like bag slots.
+    frame.iconBorder = frame:CreateTexture(nil, "ARTWORK", nil, 0)
+    frame.iconBorder:SetPoint("TOPLEFT", frame.icon, "TOPLEFT", -2, 2)
+    frame.iconBorder:SetPoint("BOTTOMRIGHT", frame.icon, "BOTTOMRIGHT", 2, -2)
 
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.title:SetJustifyH("LEFT")
@@ -197,7 +194,34 @@ local function CreateWindow()
     frame.name:SetWordWrap(false)
     frame.roll = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.roll:SetJustifyH("LEFT")
-    frame.roll:SetTextColor(0.75, 0.75, 0.75)
+
+    -- Modern: dark flat fill, rarity border on the edge. Classic: the game's
+    -- rock background in a brown-gold rim, rarity border just inside it, and
+    -- a rarity frame around the icon.
+    frame.skin = W.PanelSkin(frame, { 0.05, 0.05, 0.06, 0.9 }, function(classic)
+        local inset = classic and 2 or 0
+        local e = frame.edges
+        for _, t in ipairs(e) do t:ClearAllPoints() end
+        e[1]:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
+        e[1]:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -inset, -inset)
+        e[1]:SetHeight(1)
+        e[2]:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", inset, inset)
+        e[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
+        e[2]:SetHeight(1)
+        e[3]:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
+        e[3]:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", inset, inset)
+        e[3]:SetWidth(1)
+        e[4]:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -inset, -inset)
+        e[4]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
+        e[4]:SetWidth(1)
+        frame.iconBorder:SetShown(classic)
+        if classic then
+            frame.roll:SetTextColor(0.74, 0.68, 0.57)
+        else
+            frame.roll:SetTextColor(0.75, 0.75, 0.75)
+        end
+        if frame.icon:GetWidth() > 0 then Layout() end
+    end)
 
     -- Resize grip in the bottom-right corner; shown on hover and in the test.
     local grip = CreateFrame("Button", nil, frame)

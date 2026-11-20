@@ -17,6 +17,7 @@ local IsSecret = ns.Util.IsSecret
 local SafeCall = ns.Util.SafeCall
 local ItemInfo = ns.Util.ItemInfo
 local QualityColor = ns.Util.ItemQualityColor
+local W = ns.Widgets
 
 local M = ns:RegisterModule({
     key = "LootRolls",
@@ -176,7 +177,8 @@ local function NewRow()
     local row = CreateFrame("Frame", nil, panel)
     row.bg = row:CreateTexture(nil, "BACKGROUND")
     row.bg:SetAllPoints(row)
-    row.bg:SetColorTexture(1, 1, 1, 0.04)
+    -- Classic only: a brown-gold outline, like the quest log's headers.
+    row.edges = W.Border(row, W.themes.classic.border)
 
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
@@ -300,8 +302,23 @@ local function UpdateRowTimer(row)
     row.info:SetText(table.concat(parts, "  "))
 end
 
+-- Row background for the current look (see W.PanelSkin for the panel).
+local function StyleRow(row)
+    local classic = W.IsClassic()
+    if classic then
+        W.SetColor(row.bg, W.themes.classic.navItem)
+    else
+        row.bg:SetColorTexture(1, 1, 1, 0.04)
+    end
+    for _, edge in ipairs(row.edges) do
+        edge:SetShown(classic)
+    end
+    row.info:SetTextColor(classic and 0.74 or 0.7, classic and 0.68 or 0.7, classic and 0.57 or 0.7)
+end
+
 local function FillRow(row, r)
     row.roll = r
+    StyleRow(row)
     -- Refresh the item data once the client has it cached.
     if not r.quality or not r.icon then
         local name, quality, icon = ItemInfo(r.link or r.name)
@@ -386,19 +403,36 @@ local function CreatePanel()
     ForwardDrag(panel)
     panel:Hide()
 
-    local bg = panel:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(panel)
-    bg:SetColorTexture(0.05, 0.05, 0.06, 0.92)
-    local headerBg = panel:CreateTexture(nil, "BORDER")
-    headerBg:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
-    headerBg:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, 0)
+    local headerBg = panel:CreateTexture(nil, "BORDER", nil, 1)
     headerBg:SetHeight(HEADER_H - 2)
-    headerBg:SetColorTexture(1, 0.82, 0, 0.08)
+    -- Classic only: a brown-gold line under the title bar.
+    local divider = panel:CreateTexture(nil, "BORDER", nil, 2)
+    W.SetColor(divider, W.themes.classic.border)
+    divider:SetHeight(1)
+    divider:SetPoint("TOPLEFT", headerBg, "BOTTOMLEFT", 0, 0)
+    divider:SetPoint("TOPRIGHT", headerBg, "BOTTOMRIGHT", 0, 0)
 
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     panel.title:SetFont(Font(), 12, "OUTLINE")
     panel.title:SetTextColor(1, 0.82, 0)
     panel.title:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -4)
+
+    -- Modern: dark flat panel with a faint gold title bar. Classic: the
+    -- game's rock background in a brown-gold rim, a brown title bar and
+    -- outlined rows.
+    panel.skin = W.PanelSkin(panel, { 0.05, 0.05, 0.06, 0.92 }, function(classic)
+        local inset = classic and 2 or 0
+        headerBg:ClearAllPoints()
+        headerBg:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -inset)
+        headerBg:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -inset, -inset)
+        if classic then
+            W.SetColor(headerBg, W.themes.classic.header)
+        else
+            headerBg:SetColorTexture(1, 0.82, 0, 0.08)
+        end
+        divider:SetShown(classic)
+        if panel:IsShown() then Refresh() end
+    end)
 
     -- Resize grip: the width is free; the height is split into rows.
     local grip = CreateFrame("Button", nil, panel)
