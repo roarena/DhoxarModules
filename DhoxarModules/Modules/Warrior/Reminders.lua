@@ -2,7 +2,7 @@
 --
 -- In-combat reminder icons with a marching-dash border: Battle Shout
 -- missing/expiring, Overpower/Revenge ready, Execute ready, Victory Rush
--- ready. Each reminder can be turned off on the Warrior page, and
+-- ready, Whirlwind ready. Each reminder can be turned off on the Warrior page, and
 -- the icons are draggable from there or while Blizzard's Edit Mode is open.
 --
 -- Aura detection mirrors EllesmereUI AuraBuff Reminders: never enumerate auras
@@ -22,11 +22,11 @@ local ToSet = ns.Util.ToSet
 local M = ns.Warrior:AddFeature({
     key = "WarriorReminders",
     title = "Simple Warrior Reminders",
-    description = "In-combat reminder icons: Battle Shout missing or about to fade, Overpower/Revenge ready, Execute ready, Victory Rush ready.",
+    description = "In-combat reminder icons: Battle Shout missing or about to fade, Overpower/Revenge ready, Execute ready, Victory Rush ready, Whirlwind ready.",
     defaults = {
         icons = {},
         -- Which reminders the user wants; see IsReminderOn.
-        reminders = { shout = true, overpower = true, revenge = true, execute = true, victoryrush = true },
+        reminders = { shout = true, overpower = true, revenge = true, execute = true, victoryrush = true, whirlwind = true },
     },
     legacy = { addon = "SimpleWarriorReminders", savedVariable = "SimpleWarriorRemindersDB" },
 })
@@ -34,7 +34,7 @@ local M = ns.Warrior:AddFeature({
 local TAG = "|cffff4444Simple Warrior Reminders|r: "
 
 -- Whether the user wants a given reminder. Keys: shout, overpower, revenge,
--- execute, victoryrush. Anything not explicitly switched off is on, so a
+-- execute, victoryrush, whirlwind. Anything not explicitly switched off is on, so a
 -- reminder added later is enabled for existing users.
 local function IsReminderOn(key)
     local wanted = M.db.reminders
@@ -67,6 +67,12 @@ local EXECUTE_IDS = { 5308, 20658, 20660, 20661, 20662, 25234, 25236, 163201, 28
 local VICTORY_RUSH_SPELL_ID = 34428
 -- TBC/retail spell, then the Season of Discovery rune version.
 local VICTORY_RUSH_IDS = { 34428, 402927 }
+
+local WHIRLWIND_SPELL_ID = 1680
+-- Classic/TBC spell, then the retail Fury version.
+local WHIRLWIND_IDS = { 1680, 190411 }
+local BERSERKER_STANCE_SPELL_ID = 2458
+local WHIRLWIND_RAGE = 25
 
 local function GetSpellNameAndIcon(spellID)
     if C_Spell and C_Spell.GetSpellInfo then
@@ -102,6 +108,10 @@ EXECUTE_ICON = EXECUTE_ICON or "Interface\\Icons\\INV_Sword_48"
 local VICTORY_RUSH_NAME, VICTORY_RUSH_ICON = GetSpellNameAndIcon(VICTORY_RUSH_SPELL_ID)
 VICTORY_RUSH_NAME = VICTORY_RUSH_NAME or "Victory Rush"
 VICTORY_RUSH_ICON = VICTORY_RUSH_ICON or "Interface\\Icons\\Ability_Warrior_Devastate"
+
+local WHIRLWIND_NAME, WHIRLWIND_ICON = GetSpellNameAndIcon(WHIRLWIND_SPELL_ID)
+WHIRLWIND_NAME = WHIRLWIND_NAME or "Whirlwind"
+WHIRLWIND_ICON = WHIRLWIND_ICON or "Interface\\Icons\\Ability_Whirlwind"
 
 local SHOUT_ID_SET = ToSet(BATTLE_SHOUT_IDS)
 
@@ -387,7 +397,39 @@ local VICTORY_RUSH = {
     glow = false, cooldown = 0, lastCast = 0,
 }
 
-local ALL_REACTIVES = { REACTIVES[1], REACTIVES[2], EXECUTE, VICTORY_RUSH }
+-- Last-resort check when Whirlwind's usability is unreadable: in Berserker
+-- Stance with enough rage. A rage read that comes back secret counts as enough.
+local function WhirlwindStanceAndRage()
+    if type(GetNumShapeshiftForms) ~= "function" or type(GetShapeshiftFormInfo) ~= "function" then
+        return false
+    end
+    local inBerserker = false
+    for i = 1, (GetNumShapeshiftForms() or 0) do
+        local _, active, _, spellID = GetShapeshiftFormInfo(i)
+        if active == true and spellID == BERSERKER_STANCE_SPELL_ID then
+            inBerserker = true
+            break
+        end
+    end
+    if not inBerserker then
+        return false
+    end
+    local ok, rage = pcall(UnitPower, "player", 1)
+    if not ok or rage == nil or isSecret(rage) then
+        return true
+    end
+    return rage >= WHIRLWIND_RAGE
+end
+
+-- Whirlwind: Berserker Stance, 25 rage, 8 second cooldown (as this client's
+-- tooltip shows). Usable whenever those hold, so in combat the icon means
+-- "off cooldown, use it". It has its own icon.
+local WHIRLWIND = {
+    key = "whirlwind", name = WHIRLWIND_NAME, icon = WHIRLWIND_ICON, ids = WHIRLWIND_IDS, idSet = ToSet(WHIRLWIND_IDS),
+    glow = false, cooldown = 8, lastCast = 0, usableFallback = WhirlwindStanceAndRage,
+}
+
+local ALL_REACTIVES = { REACTIVES[1], REACTIVES[2], EXECUTE, VICTORY_RUSH, WHIRLWIND }
 
 local function FindReactive(spellID)
     for _, r in ipairs(ALL_REACTIVES) do
@@ -461,6 +503,7 @@ local DEFAULT_POSITIONS = {
     proc = { "CENTER", "CENTER", 80, 150 },
     execute = { "CENTER", "CENTER", 160, 150 },
     victoryrush = { "CENTER", "CENTER", 240, 150 },
+    whirlwind = { "CENTER", "CENTER", 320, 150 },
 }
 
 -- Saved icon positions, keyed like DEFAULT_POSITIONS.
@@ -656,7 +699,7 @@ end
 
 -- Frames are built the first time the module is enabled (see Setup).
 local ICONS = {}
-local shoutIcon, procIcon, executeIcon, victoryRushIcon
+local shoutIcon, procIcon, executeIcon, victoryRushIcon, whirlwindIcon
 
 local function CreateIcons()
     ICONS = {
@@ -664,8 +707,9 @@ local function CreateIcons()
         CreateReminderIcon("proc", OVERPOWER_ICON, OVERPOWER_NAME .. " / " .. REVENGE_NAME),
         CreateReminderIcon("execute", EXECUTE_ICON, EXECUTE_NAME),
         CreateReminderIcon("victoryrush", VICTORY_RUSH_ICON, VICTORY_RUSH_NAME),
+        CreateReminderIcon("whirlwind", WHIRLWIND_ICON, WHIRLWIND_NAME),
     }
-    shoutIcon, procIcon, executeIcon, victoryRushIcon = ICONS[1], ICONS[2], ICONS[3], ICONS[4]
+    shoutIcon, procIcon, executeIcon, victoryRushIcon, whirlwindIcon = ICONS[1], ICONS[2], ICONS[3], ICONS[4], ICONS[5]
 
     -- Countdown in the middle of the Battle Shout icon; the ticker that
     -- updates it only runs while shown.
@@ -730,6 +774,7 @@ local function UpdateVisibility()
     SetReminderShown(procIcon, ready ~= nil)
     SetReminderShown(executeIcon, inCombat and IsReactiveReady(EXECUTE))
     SetReminderShown(victoryRushIcon, inCombat and IsReactiveReady(VICTORY_RUSH))
+    SetReminderShown(whirlwindIcon, inCombat and IsReactiveReady(WHIRLWIND))
 end
 
 local function EnterUnlockMode(silent)
@@ -1072,6 +1117,7 @@ local REMINDER_OPTIONS = {
     { key = "revenge", name = REVENGE_NAME, tooltip = "Shows an icon in combat when Revenge is usable and off cooldown. Shares its icon slot with Overpower." },
     { key = "execute", name = EXECUTE_NAME, tooltip = "Shows an icon in combat when Execute is usable on your target." },
     { key = "victoryrush", name = VICTORY_RUSH_NAME, tooltip = "Shows an icon in combat when Victory Rush is usable." },
+    { key = "whirlwind", name = WHIRLWIND_NAME, tooltip = "Shows an icon in combat when Whirlwind is off cooldown and usable (Berserker Stance, enough rage)." },
 }
 
 function M:BuildOptions(page)
