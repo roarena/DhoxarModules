@@ -35,6 +35,47 @@ function Util.ToSet(list)
 end
 
 ---------------------------------------------------------------------------
+-- Items
+---------------------------------------------------------------------------
+
+-- Name, quality and icon of an item link; works before the item is cached
+-- (quality is then nil and the name comes from the link).
+function Util.ItemInfo(link)
+    local name, quality, icon
+    if C_Item and C_Item.GetItemInfo then
+        local n, _, q, _, _, _, _, _, _, tex = Util.SafeCall(C_Item.GetItemInfo, link)
+        name, quality, icon = n, q, tex
+    end
+    if not name and type(GetItemInfo) == "function" then
+        local n, _, q, _, _, _, _, _, _, tex = Util.SafeCall(GetItemInfo, link)
+        name, quality, icon = n, q, tex
+    end
+    if not icon then
+        icon = Util.SafeCall(C_Item and C_Item.GetItemIconByID, link) or Util.SafeCall(GetItemIcon, link)
+    end
+    -- Not cached yet: the link itself still has the name and color.
+    name = name or (type(link) == "string" and link:match("%[(.-)%]")) or "Unknown item"
+    return name, quality, icon or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
+-- r, g, b of an item quality, or of the link's own color when quality is nil.
+function Util.ItemQualityColor(quality, link)
+    if quality then
+        if C_Item and C_Item.GetItemQualityColor then
+            local r, g, b = Util.SafeCall(C_Item.GetItemQualityColor, quality)
+            if r then return r, g, b end
+        end
+        local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+        if c then return c.r, c.g, c.b end
+    end
+    local hex = type(link) == "string" and link:match("|c%x%x(%x%x%x%x%x%x)")
+    if hex then
+        return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+    end
+    return 1, 1, 1
+end
+
+---------------------------------------------------------------------------
 -- Copyable text window (for debug dumps)
 ---------------------------------------------------------------------------
 

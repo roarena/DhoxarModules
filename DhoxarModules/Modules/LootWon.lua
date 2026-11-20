@@ -17,6 +17,8 @@ local _, ns = ...
 
 local IsSecret = ns.Util.IsSecret
 local SafeCall = ns.Util.SafeCall
+local ItemInfo = ns.Util.ItemInfo
+local QualityColor = ns.Util.ItemQualityColor
 
 local M = ns:RegisterModule({
     key = "LootWon",
@@ -40,44 +42,6 @@ local ROLL_LABELS = {
 }
 -- rollType numbers used by LOOT_ITEM_ROLL_WON.
 local ROLL_TYPES = { [1] = "need", [2] = "greed", [3] = "disenchant" }
-
----------------------------------------------------------------------------
--- Item info
----------------------------------------------------------------------------
-
-local function ItemInfo(link)
-    local name, quality, icon
-    if C_Item and C_Item.GetItemInfo then
-        local n, _, q, _, _, _, _, _, _, tex = SafeCall(C_Item.GetItemInfo, link)
-        name, quality, icon = n, q, tex
-    end
-    if not name and type(GetItemInfo) == "function" then
-        local n, _, q, _, _, _, _, _, _, tex = SafeCall(GetItemInfo, link)
-        name, quality, icon = n, q, tex
-    end
-    if not icon then
-        icon = SafeCall(C_Item and C_Item.GetItemIconByID, link) or SafeCall(GetItemIcon, link)
-    end
-    -- Not cached yet: the link itself still has the name and color.
-    name = name or (type(link) == "string" and link:match("%[(.-)%]")) or "Unknown item"
-    return name, quality, icon or "Interface\\Icons\\INV_Misc_QuestionMark"
-end
-
-local function QualityColor(quality, link)
-    if quality then
-        if C_Item and C_Item.GetItemQualityColor then
-            local r, g, b = SafeCall(C_Item.GetItemQualityColor, quality)
-            if r then return r, g, b end
-        end
-        local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-        if c then return c.r, c.g, c.b end
-    end
-    local hex = type(link) == "string" and link:match("|c%x%x(%x%x%x%x%x%x)")
-    if hex then
-        return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
-    end
-    return 1, 1, 1
-end
 
 ---------------------------------------------------------------------------
 -- Window
@@ -225,13 +189,13 @@ local function CreateWindow()
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
-    frame.title = frame:CreateFontString(nil, "OVERLAY")
+    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.title:SetJustifyH("LEFT")
     frame.title:SetTextColor(1, 0.82, 0)
-    frame.name = frame:CreateFontString(nil, "OVERLAY")
+    frame.name = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.name:SetJustifyH("LEFT")
     frame.name:SetWordWrap(false)
-    frame.roll = frame:CreateFontString(nil, "OVERLAY")
+    frame.roll = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.roll:SetJustifyH("LEFT")
     frame.roll:SetTextColor(0.75, 0.75, 0.75)
 
