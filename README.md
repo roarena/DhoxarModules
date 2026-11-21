@@ -9,7 +9,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 | Warrior | Warriors only, and shown as disabled on other classes. Two features, each with its own switch: **Simplified Warrior Ragebar** (one centered text, value or percentage, on the Personal Resource Display's health and rage bars) and **Simple Warrior Reminders** (in-combat icons: Battle Shout missing or fading, Overpower/Revenge ready, Execute ready, Victory Rush ready, Whirlwind ready). |
 | Warlock | In-combat icon when Demon Skin is missing or about to fade (Demon Armor and Fel Armor count too). Warlocks only. |
 | Priest | In-combat icon when Power Word: Fortitude is missing or about to fade (Prayer of Fortitude and another priest's Fortitude count too). Priests only. |
-| Mage | In-combat icon when Arcane Intellect is missing or about to fade (Arcane Brilliance and another mage's Arcane Intellect count too). Mages only. |
+| Mage | In-combat icon when Arcane Intellect is missing or about to fade (Arcane Brilliance and another mage's Arcane Intellect count too). Proc alerts: an icon with stacks and time left while Fingers of Frost, Heating Up, Missile Barrage or Clearcasting is up, or while your target has your Frostbite freeze or Impact stun. Mages only. |
 | Quest XP Bar | Shades the XP bar green with the XP your completed quests will award. |
 | FPS & Latency | Shows your frame rate and latency on the screen. The latency turns orange, then red, as it rises (by default orange from 150 ms, red at 400 ms). |
 | Loot Won | Replaces Blizzard's "you won" alert when you win a roll with a window you can drag and resize: the item's icon, its name in its rarity color, and your roll. |
@@ -38,6 +38,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 | Module page | Options |
 | --- | --- |
 | Warrior | Rage bar: on/off, show percentage instead of value. Reminders: on/off, a switch per reminder (Battle Shout, Overpower, Revenge, Execute, Victory Rush, Whirlwind). Buttons to unlock/lock the icons for dragging, reset their positions, and show debug info. Opening Edit Mode also unlocks the icons. |
+| Mage | Proc alerts: a switch per proc, play a sound, show names, icon size, preview and move, reset position, proc debug info. |
 | Warlock, Priest, Mage | Also show the icon out of combat. Buttons to unlock/lock the icon for dragging, reset its position, and show debug info. Opening Edit Mode also unlocks it. |
 | Quest XP Bar | Show the completed-quest list when hovering the XP bar. Button to print the list to chat. |
 | FPS & Latency | Show FPS, show latency, text size. Sliders for where the latency turns orange and where it is fully red, and a button to restore the defaults. Buttons to unlock/lock the text for dragging and reset its position. |
@@ -54,6 +55,7 @@ DhoxarModules/
     Core.lua      registry, saved variables, start/stop, /dhoxar
     Util.lua      secret-value helpers, copyable text window
     BuffReminder.lua  "missing buff" icon used by the Warlock, Priest and Mage modules
+    ProcAlerts.lua    proc alert icons used by the Mage module
     Widgets.lua   styled buttons, switches and colors for the UI
     Options.lua   configuration window and the page API modules use
   Media/
