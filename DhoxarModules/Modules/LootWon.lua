@@ -148,6 +148,7 @@ function ShowNext()
     current = table.remove(queue, 1)
     frame.hideAt = (not current.test and not M.db.sticky) and (GetTime() + (tonumber(M.db.duration) or 8)) or nil
     frame:SetAlpha(1)
+    frame.hovered = frame:IsShown() and frame:IsMouseOver() or false
     frame.grip:SetShown(current.test == true)
     Render()
     frame:Show()
@@ -240,6 +241,7 @@ local function CreateWindow()
     frame.grip = grip
 
     frame:SetScript("OnSizeChanged", Layout)
+    frame:SetScript("OnHide", function(self) self.hovered = false end)
     frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
@@ -272,7 +274,7 @@ local function CreateWindow()
     frame:SetScript("OnUpdate", function(self)
         if not self.hideAt or self.hovered then return end
         local left = self.hideAt - GetTime()
-        if left <= 0 then
+        if left <= 0 or self:GetAlpha() <= 0.02 then
             HideWindow()
         elseif left < FADE_TIME then
             self:SetAlpha(left / FADE_TIME)

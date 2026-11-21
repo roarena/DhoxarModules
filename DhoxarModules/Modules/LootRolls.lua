@@ -29,6 +29,7 @@ local M = ns:RegisterModule({
 
 local TAG = "|cffc8aa88Loot Rolls|r: "
 local DEFAULT_POSITION = { "TOP", "TOP", 0, -240 }
+local STALE_GRACE = 5 -- seconds a real roll stays after its timer ran out
 local HEADER_H = 22
 local PAD = 4
 local MIN_W, MAX_W = 240, 800
@@ -478,13 +479,15 @@ local function CreatePanel()
         for _, row in ipairs(rowFrames) do
             if row.roll then
                 UpdateRowTimer(row)
-                -- Test rows end on their own; real ones end with CANCEL_LOOT_ROLL.
-                if row.roll.test and row.roll.endsAt <= GetTime() then expired = true end
+                -- Test rows end on their own; real ones end with CANCEL_LOOT_ROLL,
+                -- or a few seconds after their time ran out if that never comes.
+                if row.roll.endsAt + (row.roll.test and 0 or STALE_GRACE) <= GetTime() then expired = true end
             end
         end
         if expired then
             for i = #rolls, 1, -1 do
-                if rolls[i].test and rolls[i].endsAt <= GetTime() then table.remove(rolls, i) end
+                local r = rolls[i]
+                if r.endsAt + (r.test and 0 or STALE_GRACE) <= GetTime() then table.remove(rolls, i) end
             end
             Refresh()
         end
