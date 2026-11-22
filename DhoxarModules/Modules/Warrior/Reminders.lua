@@ -27,6 +27,8 @@ local M = ns.Warrior:AddFeature({
         icons = {},
         -- Which reminders the user wants; see IsReminderOn.
         reminders = { shout = true, overpower = true, revenge = true, execute = true, victoryrush = true, whirlwind = true },
+        -- Show Overpower after a dodge in any stance, not only Battle Stance.
+        overpowerAnyStance = true,
     },
     legacy = { addon = "SimpleWarriorReminders", savedVariable = "SimpleWarriorRemindersDB" },
 })
@@ -461,7 +463,22 @@ end
 -- Ready = proc active AND off cooldown. Usability ignores cooldowns, so a
 -- proc can be lit during the cooldown; that case stays hidden. A reminder
 -- the user switched off is never ready.
-local function IsReactiveReady(r)
+-- Overpower outside Battle Stance: the client says it is unusable there, so
+-- we open our own window when the target dodges (UNIT_COMBAT) (Overpower's window is 5 seconds), closed early by casting it.
+local DODGE_WINDOW = 5
+local lastDodge = 0
+
+local function OverpowerAnyStance()
+    return M.db.overpowerAnyStance ~= false
+end
+
+local function DodgeWindowLeft()
+    return math.max(0, lastDodge + DODGE_WINDOW - GetTime())
+end
+
+-- anyStance: also count Overpower as usable during the dodge window, in
+-- whatever stance the player is in.
+local function IsReactiveReady(r, anyStance)
     if not IsReminderOn(r.key) then
         return false
     end
@@ -477,18 +494,35 @@ local function IsReactiveReady(r)
             usable = ok and inRange == true
         end
     end
+    if not usable and anyStance and r == REACTIVES[1] and OverpowerAnyStance() then
+        usable = DodgeWindowLeft() > 0
+    end
     if not usable then
         return false
     end
     return ReactiveCooldownLeft(r, id) <= 0
 end
 
+-- What is castable in the current stance wins; only then Overpower from
+-- another stance, so Revenge shows while you are already in Defensive.
+-- Returns the reactive to show and true when it needs a stance change.
 local function ReadyReactive()
     for _, r in ipairs(REACTIVES) do
         if IsReactiveReady(r) then
-            return r
+            return r, false
         end
     end
+    if IsReactiveReady(REACTIVES[1], true) then
+        return REACTIVES[1], true
+    end
+end
+
+-- true when UNIT_COMBAT says the target dodged an attack. The combat log is
+-- off limits to addons on this client (registering it is a blocked action),
+-- so this is the dodge signal. It doesn't say whose attack it was; solo it
+-- is yours.
+local function TargetDodged(action)
+    return action ~= nil and not isSecret(action) and action == "DODGE"
 end
 
 ---------------------------------------------------------------------------
@@ -766,12 +800,20 @@ local function UpdateVisibility()
         return
     end
     UpdateShoutIcon()
-    local ready = inCombat and ReadyReactive() or nil
+    local ready, wrongStance
+    if inCombat then
+        ready, wrongStance = ReadyReactive()
+    end
     if ready and procIcon.current ~= ready then
         procIcon.current = ready
         procIcon.icon:SetTexture(ready.icon)
     end
     SetReminderShown(procIcon, ready ~= nil)
+    -- Overpower from another stance: grey, with the dashes stopped, until
+    -- you are in Battle Stance and can cast it.
+    procIcon.icon:SetDesaturated(wrongStance == true)
+    procIcon.icon:SetAlpha(wrongStance and 0.7 or 1)
+    if ready then procIcon.marchBorder:SetShown(not wrongStance) end
     SetReminderShown(executeIcon, inCombat and IsReactiveReady(EXECUTE))
     SetReminderShown(victoryRushIcon, inCombat and IsReactiveReady(VICTORY_RUSH))
     SetReminderShown(whirlwindIcon, inCombat and IsReactiveReady(WHIRLWIND))
@@ -791,6 +833,8 @@ local function EnterUnlockMode(silent)
     shoutIcon.cdTicker:Hide()
     for _, f in ipairs(ICONS) do
         f:EnableMouse(true)
+        f.icon:SetDesaturated(false)
+        f.icon:SetAlpha(1)
         f.marchBorder:Hide()
         f.editPanel:Show()
         f.selectionBox:Show()
@@ -901,18 +945,26 @@ local function RegisterEvents()
     SafeRegister("PLAYER_TARGET_CHANGED")
     SafeRegister("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
     SafeRegister("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE")
+    SafeRegister("UNIT_COMBAT", "target")
 end
 
 local function IsInCombatNow()
     return (type(InCombatLockdown) == "function" and InCombatLockdown()) and true or false
 end
 
-local function OnEvent(_, event, arg1, _, arg3)
-    if event == "PLAYER_REGEN_DISABLED" then
+local function OnEvent(_, event, arg1, arg2, arg3)
+    if event == "UNIT_COMBAT" then
+        -- Fires on every hit: only a dodge by the target needs an update.
+        if not OverpowerAnyStance() or not IsReminderOn("overpower") or not TargetDodged(arg2) then
+            return
+        end
+        lastDodge = GetTime()
+    elseif event == "PLAYER_REGEN_DISABLED" then
         -- No snapshot here: the aura is already secret at this point.
         inCombat = true
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
+        lastDodge = 0
         for _, r in ipairs(ALL_REACTIVES) do
             r.glow = false
         end
@@ -941,6 +993,7 @@ local function OnEvent(_, event, arg1, _, arg3)
                 if r then
                     r.glow = false
                     r.lastCast = GetTime()
+                    if r == REACTIVES[1] then lastDodge = 0 end
                 end
             end
         end
@@ -1053,8 +1106,13 @@ local function BuildDebugText()
         end
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = ("events: SPELL_UPDATE_USABLE=%s, SPELL_ACTIVATION_OVERLAY_GLOW_SHOW=%s"):format(
-        tostring(registeredEvents.SPELL_UPDATE_USABLE), tostring(registeredEvents.SPELL_ACTIVATION_OVERLAY_GLOW_SHOW))
+    lines[#lines + 1] = ("Overpower any stance=%s, dodge window left=%.1fs, last dodge=%s"):format(
+        tostring(OverpowerAnyStance()), DodgeWindowLeft(),
+        lastDodge > 0 and ("%.0fs ago"):format(GetTime() - lastDodge) or "never")
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = ("events: SPELL_UPDATE_USABLE=%s, SPELL_ACTIVATION_OVERLAY_GLOW_SHOW=%s, UNIT_COMBAT=%s"):format(
+        tostring(registeredEvents.SPELL_UPDATE_USABLE), tostring(registeredEvents.SPELL_ACTIVATION_OVERLAY_GLOW_SHOW),
+        tostring(registeredEvents.UNIT_COMBAT))
     lines[#lines + 1] = ""
     lines[#lines + 1] = "== Battle Shout per-id lookup (shouldBeSecret / call ok / result) =="
     for _, id in ipairs(BATTLE_SHOUT_IDS) do
@@ -1134,6 +1192,16 @@ function M:BuildOptions(page)
             end,
         })
     end
+    page:Checkbox({
+        label = "Overpower in any stance",
+        description = "Also shows Overpower for 5 seconds after your target dodges you when you are not in Battle Stance, as a cue to switch stance. Revenge still takes the slot when it is usable in your current stance.",
+        get = function() return OverpowerAnyStance() end,
+        set = function(value)
+            M.db.overpowerAnyStance = value and true or false
+            if not value then lastDodge = 0 end
+            if M.active then UpdateVisibility() end
+        end,
+    })
 
     page:Header("Icons")
     page:Button({
