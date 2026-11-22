@@ -140,3 +140,127 @@ function Util.ShowCopyableText(title, text)
     copyFrame.editBox:SetFocus()
     copyFrame:Show()
 end
+
+---------------------------------------------------------------------------
+-- Reminder look, shared by every reminder and alert so they all match the
+-- warrior's: a gold "marching ants" border (dashes with a lit window running
+-- around them) while shown, and a blue outline with a name tag while the
+-- user is dragging them.
+---------------------------------------------------------------------------
+
+-- Plain 4-edge border just outside the frame.
+function Util.EdgeBorder(parent, outset, thickness, r, g, b, a)
+    local box = CreateFrame("Frame", nil, parent)
+    box:SetPoint("TOPLEFT", parent, "TOPLEFT", -outset, outset)
+    box:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", outset, -outset)
+    local function Edge(p1, p2, horizontal)
+        local t = box:CreateTexture(nil, "OVERLAY")
+        t:SetColorTexture(r, g, b, a or 1)
+        t:SetPoint(p1, box, p1)
+        t:SetPoint(p2, box, p2)
+        if horizontal then t:SetHeight(thickness) else t:SetWidth(thickness) end
+    end
+    Edge("TOPLEFT", "TOPRIGHT", true)
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
+    Edge("TOPLEFT", "BOTTOMLEFT", false)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
+    box:Hide()
+    return box
+end
+
+-- Blue name tag above a frame, shown while it can be dragged.
+function Util.LabelPanel(parent, text)
+    local panel = CreateFrame("Frame", nil, parent)
+    panel:SetHeight(18)
+    panel:SetPoint("BOTTOM", parent, "TOP", 0, 6)
+    local bg = panel:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(panel)
+    bg:SetColorTexture(0.08, 0.26, 0.5, 0.9)
+    Util.EdgeBorder(panel, 0, 1, 0.4, 0.7, 1, 0.9):Show()
+    panel.text = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    panel.text:SetPoint("CENTER", panel, "CENTER", 0, 0)
+    panel.text:SetTextColor(1, 1, 1)
+    function panel:SetLabel(label)
+        self.text:SetText(label or "")
+        self:SetWidth(self.text:GetStringWidth() + 16)
+    end
+    panel:SetLabel(text)
+    panel:Hide()
+    return panel
+end
+
+-- The warrior's marching-dash border, for a frame of any size: the dashes
+-- are laid out again whenever the frame is resized. OnUpdate stops while
+-- hidden, so it costs nothing when the reminder is not showing.
+-- Defaults match the warrior icons: 4px outside, 4x2 dashes, 2px gaps, gold.
+function Util.MarchingBorder(parent, opts)
+    opts = opts or {}
+    local outset, dashLen, dashThick, gap = opts.outset or 4, opts.dashLen or 4, opts.dashThick or 2, opts.gap or 2
+    local r, g, b = opts.r or 1, opts.g or 0.82, opts.b or 0.1
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetPoint("TOPLEFT", parent, "TOPLEFT", -outset, outset)
+    container:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", outset, -outset)
+    container:Hide()
+
+    local dashes, n, builtW, builtH = {}, 0, 0, 0
+    local phase, sinceStep = 0, 0
+    local STEP_INTERVAL = 0.05
+
+    local function ApplyPhase()
+        local lit = math.max(1, math.floor(n / 3))
+        for i = 1, n do
+            dashes[i]:SetAlpha(((i - 1 - phase) % n) < lit and 1 or 0.15)
+        end
+    end
+
+    local function Build()
+        local w = math.floor(parent:GetWidth() + 0.5) + 2 * outset
+        local h = math.floor(parent:GetHeight() + 0.5) + 2 * outset
+        if w <= 2 * outset or h <= 2 * outset or (w == builtW and h == builtH) then return end
+        builtW, builtH = w, h
+        local perimeter = 2 * (w + h)
+        local count = math.max(8, math.floor(perimeter / (dashLen + gap)))
+        for i = count + 1, #dashes do dashes[i]:Hide() end
+        for i = 1, count do
+            local tex = dashes[i]
+            if not tex then
+                tex = container:CreateTexture(nil, "OVERLAY")
+                tex:SetColorTexture(r, g, b, 1)
+                dashes[i] = tex
+            end
+            tex:ClearAllPoints()
+            local dist = ((i - 1) * perimeter / count) % perimeter
+            if dist < w then -- top edge, left to right
+                tex:SetSize(dashLen, dashThick)
+                tex:SetPoint("TOPLEFT", container, "TOPLEFT", math.min(dist, w - dashLen), 0)
+            elseif dist < w + h then -- right edge, top to bottom
+                tex:SetSize(dashThick, dashLen)
+                tex:SetPoint("TOPLEFT", container, "TOPLEFT", w - dashThick, -math.min(dist - w, h - dashLen))
+            elseif dist < 2 * w + h then -- bottom edge, right to left
+                local t = dist - w - h
+                tex:SetSize(dashLen, dashThick)
+                tex:SetPoint("TOPLEFT", container, "TOPLEFT", math.max(0, w - t - dashLen), -(h - dashThick))
+            else -- left edge, bottom to top
+                local t = dist - 2 * w - h
+                tex:SetSize(dashThick, dashLen)
+                tex:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -math.max(0, h - t - dashLen))
+            end
+            tex:Show()
+        end
+        n = count
+        phase = phase % n
+        ApplyPhase()
+    end
+
+    container:SetScript("OnShow", Build)
+    container:SetScript("OnSizeChanged", Build)
+    container:SetScript("OnUpdate", function(_, delta)
+        sinceStep = sinceStep + delta
+        if sinceStep >= STEP_INTERVAL and n > 0 then
+            sinceStep = 0
+            phase = (phase + 1) % n
+            ApplyPhase()
+        end
+    end)
+    return container
+end

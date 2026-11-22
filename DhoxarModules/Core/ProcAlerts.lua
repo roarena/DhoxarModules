@@ -1,8 +1,8 @@
 -- Dhoxar Modules - proc alerts
 --
 -- A row of icons, one per active proc (a talent buff on you, or a debuff you
--- put on your target), with the stack count, the time left and a pulsing
--- border in the proc's color. Used by the Mage module; any module can use it:
+-- put on your target), with the stack count, the time left and the warrior
+-- reminders' marching-dash border, the name in the proc's color. Used by the Mage module; any module can use it:
 --
 --   local procs = ns.ProcAlerts.New(M, {
 --       tag = "|cff...Name|r: ",
@@ -39,7 +39,7 @@ ns.ProcAlerts = ProcAlerts
 
 local DEFAULT_POSITION = { "CENTER", "CENTER", 0, -140 }
 local DEFAULT_SIZE = 40
-local SPACING = 8
+local SPACING = 12 -- room for the dashes around each icon
 local POLL = 0.1
 
 ---------------------------------------------------------------------------
@@ -240,37 +240,20 @@ local function CreateIcon(parent, p)
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     f.icon:SetTexture(p.iconTex or "Interface\\Icons\\INV_Misc_QuestionMark")
 
-    -- 2px border in the proc's color, pulsing while shown.
+    -- The warrior reminders' marching-dash border; the label keeps the
+    -- proc's school color.
     local c = p.color or { 1, 0.82, 0 }
-    f.edges = {}
-    local function Edge(a, b, horizontal)
-        local t = f:CreateTexture(nil, "OVERLAY")
-        t:SetColorTexture(c[1], c[2], c[3], 1)
-        t:SetPoint(a, f, a)
-        t:SetPoint(b, f, b)
-        if horizontal then t:SetHeight(2) else t:SetWidth(2) end
-        f.edges[#f.edges + 1] = t
-    end
-    Edge("TOPLEFT", "TOPRIGHT", true)
-    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
-    Edge("TOPLEFT", "BOTTOMLEFT", false)
-    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
+    f.marchBorder = ns.Util.MarchingBorder(f)
+    f.marchBorder:Show()
 
     f.time = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     f.time:SetPoint("CENTER", f, "CENTER", 0, 0)
     f.count = f:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     f.count:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, 2)
     f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    f.label:SetPoint("TOP", f, "BOTTOM", 0, -3)
+    f.label:SetPoint("TOP", f, "BOTTOM", 0, -8) -- below the dashes
     f.label:SetTextColor(c[1], c[2], c[3])
     f.label:SetText(p.name)
-
-    local t = 0
-    f:SetScript("OnUpdate", function(self, dt)
-        t = t + dt
-        local a = 0.55 + 0.45 * math.abs(math.sin(t * 3))
-        for _, e in ipairs(self.edges) do e:SetAlpha(a) end
-    end)
     f:Hide()
     return f
 end
