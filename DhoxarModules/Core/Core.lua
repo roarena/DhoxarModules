@@ -294,12 +294,70 @@ local function PrintStatus()
     end
 end
 
+-- /dhoxar mouse: what is under the cursor, for finding frames that block
+-- clicks on the world. Waits a moment so the cursor can be moved there.
+local function FrameLabel(f)
+    local ok, name = pcall(function() return f.GetDebugName and f:GetDebugName() or f:GetName() end)
+    if ok and type(name) == "string" and not ns.Util.IsSecret(name) and name ~= "" then return name end
+    return tostring(f)
+end
+
+local function MouseReport()
+    local lines = {}
+    local function Add(s) lines[#lines + 1] = s end
+    local foci = {}
+    if GetMouseFoci then
+        local ok, list = pcall(GetMouseFoci)
+        if ok and type(list) == "table" then foci = list end
+    elseif GetMouseFocus then
+        local ok, f = pcall(GetMouseFocus)
+        if ok and f then foci = { f } end
+    end
+    Add("Mouse focus:")
+    if #foci == 0 then Add("  (none)") end
+    for _, f in ipairs(foci) do Add("  " .. FrameLabel(f)) end
+
+    Add("")
+    Add("Shown frames under the cursor that take the mouse:")
+    local count = 0
+    local f = EnumerateFrames()
+    while f do
+        local ok, hit, strata, alpha = pcall(function()
+            local takesMouse = (f.IsMouseEnabled and f:IsMouseEnabled())
+                or (f.IsMouseClickEnabled and f:IsMouseClickEnabled())
+            return f:IsVisible() and takesMouse and f:IsMouseOver(), f:GetFrameStrata(), f:GetEffectiveAlpha()
+        end)
+        if ok and hit and f ~= WorldFrame then
+            count = count + 1
+            Add(("  %s  strata=%s alpha=%.2f"):format(FrameLabel(f), tostring(strata), tonumber(alpha) or -1))
+        end
+        f = EnumerateFrames(f)
+    end
+    if count == 0 then Add("  (none)") end
+
+    Add("")
+    local function State(label, fn)
+        local ok, v = pcall(fn)
+        Add(("%s: %s"):format(label, ok and tostring(v) or "?"))
+    end
+    State("Mouselook", function() return IsMouselooking and IsMouselooking() end)
+    State("Cursor holds", function() return GetCursorInfo and GetCursorInfo() or "nothing" end)
+    State("Spell targeting", function() return SpellIsTargeting and SpellIsTargeting() end)
+    for i = 1, 4 do
+        local g = _G["GroupLootFrame" .. i]
+        if g then State("GroupLootFrame" .. i .. " shown", function() return g:IsShown() end) end
+    end
+    if GroupLootContainer then State("GroupLootContainer shown", function() return GroupLootContainer:IsShown() end) end
+    ns.Util.ShowCopyableText("Dhoxar Modules: under the mouse", table.concat(lines, "\n"))
+end
+
 local function PrintHelp()
     ns:Print("commands:")
     print("  /dhoxar - open or close the configuration window")
     print("  /dhoxar list - show every module and its state")
     print("  /dhoxar enable <module> - turn a module on")
     print("  /dhoxar disable <module> - turn a module off")
+    print("  /dhoxar mouse - after 3 seconds, show what is under the cursor")
 end
 
 SLASH_DHOXARMODULES1 = "/dhoxar"
@@ -316,6 +374,9 @@ SlashCmdList["DHOXARMODULES"] = function(msg)
         end
     elseif command == "list" or command == "status" then
         PrintStatus()
+    elseif command == "mouse" then
+        ns:Print("put the cursor where clicks don't reach the world; checking in 3 seconds.")
+        C_Timer.After(3, MouseReport)
     elseif command == "enable" or command == "disable" then
         local module = ns:FindModule(rest)
         if not module then
