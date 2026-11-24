@@ -16,6 +16,7 @@ Built for WoW Forever 1.60.1 (interface version `16001`).
 | Loot Won | Replaces Blizzard's "you won" alert when you win a roll with a window you can drag and resize: the item's icon, its name in its rarity color, and your roll. |
 | Loot Rolls | Replaces Blizzard's roll frames with one panel you can drag and resize, listing every open roll with its item in its rarity color, the time left, and Need, Greed and Pass buttons. After you choose Need or Greed, the item's card opens to show your roll and the rest of the group's, and stays until the item goes to someone. |
 | Quest Item Sparkles | Keeps the loot sparkle on quest items showing: graphics presets turn it off, this turns it back on. Does not change your outline mode. |
+| Enhanced Graphics | Off by default. Raises graphics settings past the options menu: grass density, distance and fade, sharpening, lighting, water reflections, weather, object/terrain/horizon draw distance, and camera zoom. Saves your values first and puts them back when turned off. These settings live in `WTF\Config.wtf`. |
 
 ## Install
 
@@ -46,6 +47,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 | FPS & Latency | Show FPS, show latency, text size. Sliders for where the latency turns orange and where it is fully red, and a button to restore the defaults. Buttons to unlock/lock the text for dragging and reset its position. |
 | Loot Won | Test button that shows the window so you can place and size it, how long it stays, keep it open until closed, reset position and size, hide Blizzard's alert. |
 | Loot Rolls | Show everyone's rolls (on by default). Test button that shows the panel with a few of your items so you can place and size it, reset position and size, hide Blizzard's roll frames. |
+| Enhanced Graphics | A warning that the settings are written to `Config.wtf` (copy it first if you want your own backup), the list of values, and a button that shows each setting's current and saved value. |
 | Quest Item Sparkles | None besides the module switch. Changing it shows a reminder that the change takes effect after you log out and back in. |
 
 ## Layout
@@ -76,6 +78,7 @@ DhoxarModules/
     Performance.lua
     LootWon.lua
     LootRolls.lua
+    Graphics.lua
 ```
 
 Settings live in `DhoxarModulesDB.modules[<key>]`; warrior features in `DhoxarModulesDB.modules.Warrior.features[<key>]`. A warrior feature registers with `ns.Warrior:AddFeature({...})`, which takes the same fields and callbacks as a module.
