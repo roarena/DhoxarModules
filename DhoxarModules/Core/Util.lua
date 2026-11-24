@@ -76,6 +76,50 @@ function Util.ItemQualityColor(quality, link)
 end
 
 ---------------------------------------------------------------------------
+-- Chat message patterns built from Blizzard's global format strings (e.g.
+-- LOOT_ROLL_WON = "%s won: %s"), so they work in every client language.
+---------------------------------------------------------------------------
+
+-- Turns a global format string into a Lua pattern and the order of its tokens.
+local function CompileFormat(fmt)
+    local tokens = {}
+    local s = fmt:gsub("%%(%d*)%$?([sd])", function(n, t)
+        tokens[#tokens + 1] = { pos = tonumber(n) or (#tokens + 1), t = t }
+        return "\1"
+    end)
+    s = s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+    local i = 0
+    s = s:gsub("\1", function()
+        i = i + 1
+        return tokens[i].t == "d" and "(%d+)" or "(.+)"
+    end)
+    return "^" .. s .. "$", tokens
+end
+
+-- A pattern for the global string `global`, whose tokens are named by
+-- `fields` in order. nil when the client has no such string.
+function Util.ChatPattern(global, fields)
+    local fmt = _G[global]
+    if type(fmt) ~= "string" then return nil end
+    local pat, tokens = CompileFormat(fmt)
+    return { pat = pat, tokens = tokens, fields = fields, global = global }
+end
+
+-- Captures of `msg` by field name, or nil. Tokens in front of the documented
+-- ones (the Forever client's "[Loot]" link) are skipped.
+function Util.MatchChat(msg, def)
+    local caps = { msg:match(def.pat) }
+    if #caps == 0 then return nil end
+    local skip = math.max(0, #def.tokens - #def.fields)
+    local out = {}
+    for i, tk in ipairs(def.tokens) do
+        local field = def.fields[tk.pos - skip]
+        if field then out[field] = caps[i] end
+    end
+    return out
+end
+
+---------------------------------------------------------------------------
 -- Copyable text window (for debug dumps)
 ---------------------------------------------------------------------------
 

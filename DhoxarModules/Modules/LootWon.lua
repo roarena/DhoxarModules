@@ -302,28 +302,12 @@ end
 -- Chat parsing
 ---------------------------------------------------------------------------
 
--- Turns a global format string into a Lua pattern and the order of its tokens.
-local function Compile(fmt)
-    local tokens = {}
-    local s = fmt:gsub("%%(%d*)%$?([sd])", function(n, t)
-        tokens[#tokens + 1] = { pos = tonumber(n) or (#tokens + 1), t = t }
-        return "\1"
-    end)
-    s = s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
-    local i = 0
-    s = s:gsub("\1", function()
-        i = i + 1
-        return tokens[i].t == "d" and "(%d+)" or "(.+)"
-    end)
-    return "^" .. s .. "$", tokens
-end
-
 local DEFS = {}
 local function Def(global, kind, fields, roll)
-    local fmt = _G[global]
-    if type(fmt) ~= "string" then return end
-    local pat, tokens = Compile(fmt)
-    DEFS[#DEFS + 1] = { pat = pat, tokens = tokens, kind = kind, fields = fields, roll = roll }
+    local def = ns.Util.ChatPattern(global, fields)
+    if not def then return end
+    def.kind, def.roll = kind, roll
+    DEFS[#DEFS + 1] = def
 end
 
 Def("LOOT_ROLL_YOU_WON", "won", { "item" })
@@ -332,19 +316,7 @@ Def("LOOT_ROLL_ROLLED_NEED_ROLE_BONUS", "rolled", { "roll", "item", "player" }, 
 Def("LOOT_ROLL_ROLLED_GREED", "rolled", { "roll", "item", "player" }, "greed")
 Def("LOOT_ROLL_ROLLED_DE", "rolled", { "roll", "item", "player" }, "disenchant")
 
--- Captures by field name. Tokens in front of the documented ones (the
--- Forever client's "[Loot]" link) are skipped.
-local function Match(msg, def)
-    local caps = { msg:match(def.pat) }
-    if #caps == 0 then return nil end
-    local skip = math.max(0, #def.tokens - #def.fields)
-    local out = {}
-    for i, tk in ipairs(def.tokens) do
-        local field = def.fields[tk.pos - skip]
-        if field then out[field] = caps[i] end
-    end
-    return out
-end
+local Match = ns.Util.MatchChat
 
 local function IsMe(player)
     if not player then return false end
