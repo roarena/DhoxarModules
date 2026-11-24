@@ -2,7 +2,7 @@
 ## Title: Dhoxar Modules
 ## Notes: A collection of small UI modules (Warrior rage bar and reminders, Warlock, Priest and Mage buff reminders, Mage proc alerts, Hunter Mongoose Bite and aspect reminders, Quest XP Bar, Quest Item Sparkles, FPS & Latency, Loot Won, Loot Rolls, Enhanced Graphics) managed from one options panel. Type /dhoxar.
 ## Author: rodrigoarenacamara
-## Version: 1.7.0
+## Version: 1.8.0
 ## IconTexture: Interface\AddOns\DhoxarModules\Media\logo
 ## SavedVariables: DhoxarModulesDB
 
