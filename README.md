@@ -47,7 +47,7 @@ The window has an **Overview** page with a card per module (status, on/off switc
 | FPS & Latency | Show FPS, show latency, text size. Sliders for where the latency turns orange and where it is fully red, and a button to restore the defaults. Buttons to unlock/lock the text for dragging and reset its position. |
 | Loot Won | Test button that shows the window so you can place and size it, how long it stays, keep it open until closed, reset position and size, hide Blizzard's alert. |
 | Loot Rolls | Show everyone's rolls (on by default). Test button that shows the panel with a few of your items so you can place and size it, reset position and size, hide Blizzard's roll frames. |
-| Enhanced Graphics | A warning that the settings are written to `Config.wtf` (copy it first if you want your own backup), the list of values, and a button that shows each setting's current and saved value. |
+| Enhanced Graphics | A warning that the settings are written to `Config.wtf` (copy it first if you want your own backup), the list of values, a sharpening strength slider (0.3 to 0.7), and a button that shows each setting's current and saved value. |
 | Quest Item Sparkles | None besides the module switch. Changing it shows a reminder that the change takes effect after you log out and back in. |
 
 ## Layout

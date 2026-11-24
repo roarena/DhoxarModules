@@ -21,17 +21,24 @@ local M = ns:RegisterModule({
     description = "Raises graphics settings past the options menu: grass, sharpening, reflections, weather, draw distance and camera zoom. Off by default; turning it off puts your settings back.",
     aliases = { "graphics", "gfx", "cvars" },
     enabledByDefault = false,
-    defaults = {},
+    defaults = { sharpness = 0.5 },
 })
 
 local TAG = "|cffc8aa88Enhanced Graphics|r: "
+local SHARP_MIN, SHARP_MAX = 0.3, 0.7
 
--- { cvar, value, what it does }
+local function Sharpness()
+    local v = tonumber(M.db.sharpness) or 0.5
+    return math.min(SHARP_MAX, math.max(SHARP_MIN, v))
+end
+
+-- { cvar, value (or a function returning it), what it does }
 local TWEAKS = {
     { "groundEffectDensity", "256", "Grass density (menu maximum is 48)" },
     { "groundEffectDist", "500", "Grass draw distance" },
     { "groundEffectFade", "370", "Grass fade range" },
     { "resampleAlwaysSharpen", "1", "Screen sharpening" },
+    { "resampleSharpness", function() return ("%.2f"):format(Sharpness()) end, "Sharpening strength (slider below)" },
     { "HDRFactor", "1.3", "Lighting contrast and brightness" },
     { "reflectionMode", "3", "Water reflection detail" },
     { "weatherDensity", "3", "Weather particles" },
@@ -40,6 +47,11 @@ local TWEAKS = {
     { "farClip", "2000", "Horizon view distance" },
     { "cameraDistanceMaxZoomFactor", "4.0", "Maximum camera distance" },
 }
+
+local function ValueOf(t)
+    if type(t[2]) == "function" then return t[2]() end
+    return t[2]
+end
 
 local pending -- "apply" or "restore", waiting for the end of combat
 
@@ -69,7 +81,7 @@ local function Apply()
     local backup = M.db.backup
     local skipped = {}
     for _, t in ipairs(TWEAKS) do
-        local name, value = t[1], t[2]
+        local name, value = t[1], ValueOf(t)
         local current = GetCVarSafe(name)
         if current == nil then
             skipped[#skipped + 1] = name
@@ -152,9 +164,24 @@ function M:BuildOptions(page)
     page:Header("What it changes")
     local list = {}
     for _, t in ipairs(TWEAKS) do
-        list[#list + 1] = ("%s: |cffffffff%s|r"):format(t[3], t[2])
+        if type(t[2]) ~= "function" then
+            list[#list + 1] = ("%s: |cffffffff%s|r"):format(t[3], t[2])
+        end
     end
     page:Text(table.concat(list, "\n"))
+
+    page:Header("Sharpening")
+    page:Slider({
+        label = "Sharpening strength",
+        description = "How strong the screen sharpening is, from 0.3 to 0.7. Lower it if edges look over-sharpened. Applied while this module is on.",
+        min = SHARP_MIN, max = SHARP_MAX, step = 0.05,
+        get = Sharpness,
+        set = function(value)
+            M.db.sharpness = math.floor(value * 100 + 0.5) / 100
+            if M.active then Apply() end
+        end,
+        format = function(value) return ("%.2f"):format(value) end,
+    })
 
     page:Header("Check")
     page:Button({
