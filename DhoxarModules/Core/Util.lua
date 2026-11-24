@@ -123,7 +123,7 @@ function Util.ShowCopyableText(title, text)
         local editBox = CreateFrame("EditBox", nil, scrollFrame)
         editBox:SetMultiLine(true)
         editBox:SetFontObject(ChatFontNormal)
-        editBox:SetWidth(scrollFrame:GetWidth())
+        editBox:SetWidth(470) -- the scroll frame has no size yet when this runs
         editBox:SetAutoFocus(false)
         editBox:SetScript("OnEscapePressed", function()
             f:Hide()

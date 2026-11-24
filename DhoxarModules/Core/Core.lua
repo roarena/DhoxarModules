@@ -319,26 +319,38 @@ local function MouseReport()
 
     Add("")
     Add("Shown frames under the cursor that take the mouse:")
-    local count = 0
-    local f = EnumerateFrames()
-    while f do
-        local ok, hit, strata, alpha = pcall(function()
-            local takesMouse = (f.IsMouseEnabled and f:IsMouseEnabled())
-                or (f.IsMouseClickEnabled and f:IsMouseClickEnabled())
-            return f:IsVisible() and takesMouse and f:IsMouseOver(), f:GetFrameStrata(), f:GetEffectiveAlpha()
+    local count, guard = 0, 0
+    local okEnum, f = pcall(EnumerateFrames)
+    if not okEnum then f = nil end
+    while f and guard < 200000 do
+        guard = guard + 1
+        local cur = f
+        local ok, line = pcall(function()
+            local takesMouse = (cur.IsMouseEnabled and cur:IsMouseEnabled())
+                or (cur.IsMouseClickEnabled and cur:IsMouseClickEnabled())
+            if cur == WorldFrame or not (cur:IsVisible() and takesMouse and cur:IsMouseOver()) then return nil end
+            local strata, alpha = cur:GetFrameStrata(), cur:GetEffectiveAlpha()
+            if ns.Util.IsSecret(strata) then strata = "?" end
+            if ns.Util.IsSecret(alpha) then alpha = nil end
+            return ("  %s  strata=%s alpha=%.2f"):format(FrameLabel(cur), tostring(strata), tonumber(alpha) or -1)
         end)
-        if ok and hit and f ~= WorldFrame then
+        if ok and line then
             count = count + 1
-            Add(("  %s  strata=%s alpha=%.2f"):format(FrameLabel(f), tostring(strata), tonumber(alpha) or -1))
+            Add(line)
         end
-        f = EnumerateFrames(f)
+        local okNext, nextFrame = pcall(EnumerateFrames, cur)
+        f = okNext and nextFrame or nil
     end
     if count == 0 then Add("  (none)") end
 
     Add("")
     local function State(label, fn)
-        local ok, v = pcall(fn)
-        Add(("%s: %s"):format(label, ok and tostring(v) or "?"))
+        local ok, text = pcall(function()
+            local v = fn()
+            if ns.Util.IsSecret(v) then return "?" end
+            return tostring(v)
+        end)
+        Add(("%s: %s"):format(label, ok and text or "?"))
     end
     State("Mouselook", function() return IsMouselooking and IsMouselooking() end)
     State("Cursor holds", function() return GetCursorInfo and GetCursorInfo() or "nothing" end)
@@ -348,7 +360,18 @@ local function MouseReport()
         if g then State("GroupLootFrame" .. i .. " shown", function() return g:IsShown() end) end
     end
     if GroupLootContainer then State("GroupLootContainer shown", function() return GroupLootContainer:IsShown() end) end
-    ns.Util.ShowCopyableText("Dhoxar Modules: under the mouse", table.concat(lines, "\n"))
+    local report = table.concat(lines, "\n")
+    -- Also in chat, in case the window cannot open.
+    for _, line in ipairs(lines) do
+        if line ~= "" then print("|cff33ff99Dhoxar mouse|r " .. line) end
+    end
+    local okShow, err = pcall(ns.Util.ShowCopyableText, "Dhoxar Modules: under the mouse", report)
+    if not okShow then ns:Print("could not open the report window: " .. tostring(err)) end
+end
+
+local function SafeMouseReport()
+    local ok, err = xpcall(MouseReport, function(e) return tostring(e) end)
+    if not ok then ns:Print("/dhoxar mouse failed: " .. tostring(err)) end
 end
 
 local function PrintHelp()
@@ -376,7 +399,7 @@ SlashCmdList["DHOXARMODULES"] = function(msg)
         PrintStatus()
     elseif command == "mouse" then
         ns:Print("put the cursor where clicks don't reach the world; checking in 3 seconds.")
-        C_Timer.After(3, MouseReport)
+        C_Timer.After(3, SafeMouseReport)
     elseif command == "enable" or command == "disable" then
         local module = ns:FindModule(rest)
         if not module then

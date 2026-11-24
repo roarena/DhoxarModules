@@ -503,8 +503,46 @@ end
 local blizzardMuted = false
 local hookedFrames = {}
 
+local function Muting()
+    return M.active and M.db.hideBlizzard ~= false
+end
+
+-- Blizzard's GroupLootContainer holds the roll frames and takes the mouse.
+-- Hiding a roll frame directly skips the code that hides the container once
+-- it is empty, so it stayed shown, invisible, over the middle of the screen
+-- and ate clicks meant for the world. While muted: hide it when nothing in
+-- it is shown, and keep it from taking the mouse either way.
+local containerMouse -- its original EnableMouse state, while we own it
+
+local function ContainerHasShownFrame(c)
+    local ok, shown = pcall(function()
+        for _, child in ipairs({ c:GetChildren() }) do
+            if child:IsShown() then return true end
+        end
+        return false
+    end)
+    return ok and shown
+end
+
+local function TidyContainer()
+    local c = GroupLootContainer
+    if not c then return end
+    if Muting() then
+        if containerMouse == nil then
+            local ok, enabled = pcall(c.IsMouseEnabled, c)
+            containerMouse = ok and enabled or false
+        end
+        pcall(c.EnableMouse, c, false)
+        if c:IsShown() and not ContainerHasShownFrame(c) then pcall(c.Hide, c) end
+    elseif containerMouse ~= nil then
+        pcall(c.EnableMouse, c, containerMouse)
+        containerMouse = nil
+    end
+end
+
 local function HideBlizzardFrame(f)
-    if M.active and M.db.hideBlizzard ~= false and f:IsShown() then f:Hide() end
+    if Muting() and f:IsShown() then f:Hide() end
+    TidyContainer()
 end
 
 local function MuteBlizzard(mute)
@@ -527,6 +565,12 @@ local function MuteBlizzard(mute)
         end
         if f and mute then HideBlizzardFrame(f) end
     end
+    local c = GroupLootContainer
+    if c and not hookedFrames[c] then
+        hookedFrames[c] = true
+        c:HookScript("OnShow", TidyContainer)
+    end
+    TidyContainer()
 end
 
 ---------------------------------------------------------------------------
