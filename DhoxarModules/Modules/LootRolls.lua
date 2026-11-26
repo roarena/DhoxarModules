@@ -247,21 +247,27 @@ local function Choose(row, choice)
         Refresh()
         return
     end
-    local ok = pcall(RollOnLoot, r.id, choice)
-    if not ok then
-        print(TAG .. "could not roll on " .. (r.link or r.name) .. ".")
-        return
-    end
-    -- Bind-on-pickup: the choice only counts once Blizzard's pop-up is
-    -- confirmed, and CANCEL_LOOT_ROLL comes then. Until that the buttons
-    -- stay, in case the pop-up is declined.
+    -- Record the choice before rolling: the client can send CANCEL_LOOT_ROLL
+    -- from inside RollOnLoot, and RemoveRoll must already see the choice to
+    -- keep the card. Bind-on-pickup: the choice only counts once Blizzard's
+    -- pop-up is confirmed, and CANCEL_LOOT_ROLL comes then. Until that the
+    -- buttons stay, in case the pop-up is declined.
     if r.bop then
         r.pending = choice
     else
         r.chosen = choice
         SetEntry(r, MyName(), choice)
-        Refresh()
     end
+    local ok = pcall(RollOnLoot, r.id, choice)
+    if not ok then
+        r.pending = nil
+        if not r.bop and r.chosen == choice and not r.closed then
+            r.chosen = nil
+            if r.entries then r.entries[MyName() or ""] = nil end
+        end
+        print(TAG .. "could not roll on " .. (r.link or r.name) .. ".")
+    end
+    Refresh()
 end
 
 local function ButtonTooltip(self)
