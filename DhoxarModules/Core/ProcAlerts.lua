@@ -24,7 +24,8 @@
 --   2. its name with C_UnitAuras.GetAuraDataBySpellName; when that returns a
 --      readable spell id, the id is saved, so step 1 knows it next time;
 --   3. a plain aura scan, on clients without C_UnitAuras;
---   4. the action-bar proc highlight of one of its `glow` spells.
+--   4. the action-bar proc highlight of one of its `glow` spells, asked
+--      directly on every check and also tracked from the highlight events.
 --
 -- Saved in the module's db: procs (key -> false when switched off),
 -- procPosition, procSize, procSound, procNames, procIds (learned ids).
@@ -115,8 +116,9 @@ function ProcAlerts.New(module, config)
         p.names[p.name] = true
         p.iconTex = p.iconTex or p.icon
         -- glow: spell ids (resolved to the client's names) and/or names.
-        p.glowNames = {}
+        p.glowNames, p.glowIds = {}, {}
         for _, spell in ipairs(p.glow or {}) do
+            if type(spell) == "number" then p.glowIds[#p.glowIds + 1] = spell end
             local name = type(spell) == "number" and SpellNameAndIcon(spell) or spell
             if type(name) == "string" then p.glowNames[name] = true end
         end
@@ -155,6 +157,15 @@ function ProcAlerts:Learn(p, id)
     local db = self:DB()
     db.procIds[p.key] = db.procIds[p.key] or {}
     db.procIds[p.key][id] = true
+end
+
+-- Whether the action bar highlights this spell right now, asked directly
+-- rather than waiting for the highlight event (whose spell id can be hidden).
+local function IsOverlayed(id)
+    local api = (C_SpellActivationOverlay and C_SpellActivationOverlay.IsSpellOverlayed) or IsSpellOverlayed
+    if type(api) ~= "function" then return false end
+    local ok, on = pcall(api, id)
+    return ok and not isSecret(on) and on == true
 end
 
 local function Filter(p)
@@ -206,6 +217,9 @@ function ProcAlerts:Query(p)
     end
 
     -- 4. Proc highlight on the action bar.
+    for _, id in ipairs(p.glowIds) do
+        if IsOverlayed(id) then return true, nil, nil, "highlight " .. id end
+    end
     for spell in pairs(p.glowNames) do
         if self.glowing[spell] then return true, nil, nil, "highlight" end
     end
@@ -422,7 +436,7 @@ function ProcAlerts:DebugText()
     local lines = { ("moduleActive=%s, unlocked=%s"):format(tostring(self.module.active), tostring(self.unlocked)) }
     local glowing = {}
     for name in pairs(self.glowing) do glowing[#glowing + 1] = name end
-    lines[#lines + 1] = "highlighted spells: " .. (#glowing > 0 and table.concat(glowing, ", ") or "none")
+    lines[#lines + 1] = "highlighted spells (events): " .. (#glowing > 0 and table.concat(glowing, ", ") or "none")
     for _, p in ipairs(self.procs) do
         local found, stacks, expires, source = self:Query(p)
         lines[#lines + 1] = ""
@@ -433,6 +447,9 @@ function ProcAlerts:DebugText()
         local names = {}
         for name in pairs(p.names) do names[#names + 1] = name end
         lines[#lines + 1] = "names: " .. table.concat(names, ", ")
+        for _, id in ipairs(p.glowIds) do
+            lines[#lines + 1] = ("  highlight %d: %s"):format(id, tostring(IsOverlayed(id)))
+        end
         for _, id in ipairs(self:Ids(p)) do
             local result = "n/a"
             if (p.unit or "player") == "player" and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
