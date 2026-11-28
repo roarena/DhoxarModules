@@ -92,7 +92,8 @@ local function GetQuestXP(index, questID)
     return xp or 0
 end
 
--- Returns total XP and a list of {title, xp} for completed quests.
+-- Returns total XP and a list of {title, xp} for completed quests, biggest
+-- reward first (ties by title).
 local function ScanCompletedQuests()
     local total, list = 0, {}
     for i = 1, GetNumEntries() do
@@ -107,6 +108,10 @@ local function ScanCompletedQuests()
             end
         end
     end
+    table.sort(list, function(a, b)
+        if a.xp ~= b.xp then return a.xp > b.xp end
+        return a.title < b.title
+    end)
     return total, list
 end
 
